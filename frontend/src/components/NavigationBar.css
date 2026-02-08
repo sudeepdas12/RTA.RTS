@@ -78,6 +78,9 @@ body, html {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   order: 1;
   position: relative;
+  /* Ensure brand sits on the left and pushes other items to the right */
+  margin-right: auto;
+  margin-left: 8px;
 }
 
 .navbar-brand::before {
