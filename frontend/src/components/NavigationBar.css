@@ -620,7 +620,7 @@ body, html {
 }
 
 /* Notification badge and dropdown */
-.nav-notifications { margin-right: 12px; }
+.nav-notifications { margin-left: auto; margin-right: 12px; } /* keeps notifications and user dropdowns on the right */
 .notif-btn {
   position: relative;
   border-radius: 8px;
