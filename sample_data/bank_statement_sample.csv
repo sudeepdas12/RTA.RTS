@@ -1,0 +1,6 @@
+txn_date,reference_no,description,debit,credit,balance
+2026-01-30,NB-INT-001,Interest payout for NABIL-DB-2081-01,0.00,106250.00,2106250.00
+2026-01-31,NB-DIV-001,Dividend payout NTC 2080/81,0.00,382500.00,2488750.00
+2026-02-01,NB-INT-002,Part payment Nyadi debenture,0.00,50000.00,2538750.00
+2026-02-02,NB-DIV-002,Dividend mismatch for NYADI,0.00,90000.00,2628750.00
+2026-02-03,NB-CHG-001,Bank charges for RTS account,1500.00,0.00,2627250.00

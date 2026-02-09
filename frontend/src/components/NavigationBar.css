@@ -58,17 +58,19 @@ body, html {
   overflow-x: hidden;
   overflow-y: auto;
 }
-/* Top Bar - User Left, Logo Right */
+/* Top Bar - Brand Left, Controls Right */
 .navbar-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 8px 24px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  width: 100%;
+  overflow: visible;
 }
 
 /* Brand - Left Side */
-.navbar-brand {
+.modern-navbar .navbar-brand {
   text-decoration: none !important;
   color: white;
   font-weight: 600;
@@ -76,10 +78,11 @@ body, html {
   align-items: center;
   gap: 12px;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  order: 1;
+  /* keep brand on the left */
+  order: 0;
   position: relative;
   /* Ensure brand sits on the left and pushes other items to the right */
-  margin-right: auto;
+  margin-right: auto !important;
   margin-left: 8px;
 }
 
@@ -186,8 +189,7 @@ body, html {
   background: linear-gradient(135deg, var(--nav-grad-start-2) 0%, var(--nav-grad-mid-2) 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  overflow-x: auto;
-  overflow-y: visible !important;
+  overflow: visible;
   /* removed redundant "overflow: visible !important" */
   position: relative;
   z-index: 50;
@@ -200,7 +202,8 @@ body, html {
   gap: 6px;
   flex-wrap: nowrap;
   width: 100%;
-  overflow: visible !important;
+  overflow-x: auto;
+  overflow-y: visible;
   position: relative;
   z-index: 1000;
   white-space: nowrap;
@@ -504,7 +507,7 @@ body, html {
   z-index: 2000;
   position: relative;
   flex-shrink: 0;
-  order: 2;
+  order: 1;
 }
 
 .nav-dropdown-wrapper {
@@ -620,7 +623,29 @@ body, html {
 }
 
 /* Notification badge and dropdown */
-.nav-notifications { margin-left: auto; margin-right: 12px; } /* keeps notifications and user dropdowns on the right */
+.navbar-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.nav-user {
+  order: 1;
+}
+
+.nav-notifications {
+  order: 2;
+  margin-left: 12px;
+  margin-right: 0;
+}
+
+/* Ensure dropdowns overlay and are not clipped */
+.modern-navbar .dropdown-menu {
+  z-index: 3000 !important;
+  transform: translateZ(0);
+}
 .notif-btn {
   position: relative;
   border-radius: 8px;
@@ -654,6 +679,8 @@ body, html {
 .notifications-menu {
   min-width: 260px;
   max-width: 360px;
+  right: 0;
+  left: auto;
 }
 
 .notifications-menu .dropdown-header {

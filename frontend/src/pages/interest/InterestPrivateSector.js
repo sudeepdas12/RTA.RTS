@@ -1,0 +1,126 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Container, Card, Table, Alert } from 'react-bootstrap';
+import { FaChartBar, FaBuilding } from 'react-icons/fa';
+import NavigationBar from '../../components/NavigationBar';
+import DateRangeFilter from '../../components/DateRangeFilter';
+import { interestService, companyService } from '../../services/api';
+import { buildDateParams, formatCurrency, aggregateBy, normalizeList } from '../../utils/reportUtils';
+import '../../styles/dashboard.css';
+
+const InterestPrivateSector = () => {
+  const [range, setRange] = useState({ fromDate: '', toDate: '' });
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [publicCompanies, setPublicCompanies] = useState([]);
+
+  const fetchCompanies = async () => {
+    try {
+      const response = await companyService.getAll({ sector_type: 'Public' });
+      const companies = normalizeList(response.data);
+      setPublicCompanies(companies.map(c => c.company_id ?? c.id));
+    } catch (err) {
+      console.error('Failed to fetch public sector companies', err);
+    }
+  };
+
+  const fetchData = useCallback(async (dateRange) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = buildDateParams(dateRange);
+      // Request a large page_size so client-side filtering sees all items
+      params.page_size = 1000;
+      const response = await interestService.getAll(params);
+      const items = normalizeList(response.data);
+      const filtered = items.filter(item => publicCompanies.includes(item.company));
+      const aggregated = aggregateBy(
+        filtered,
+        (item) => item.company_name,
+        (item) => item.net_payable
+      );
+      setData(aggregated);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to fetch data');
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [publicCompanies]);
+
+  useEffect(() => {
+    fetchCompanies();
+  }, []);
+
+  useEffect(() => {
+    if (publicCompanies.length > 0) {
+      fetchData(range);
+    }
+  }, [range, publicCompanies, fetchData]);
+
+  const total = data.reduce((sum, row) => sum + row.total, 0);
+  const rangeText = range.fromDate && range.toDate
+    ? `From ${range.fromDate} to ${range.toDate}`
+    : 'All dates';
+
+  return (
+    <>
+      <NavigationBar />
+      <div className="dashboard-container">
+        <Container fluid>
+          <h2 className="dashboard-header"><FaBuilding style={{ marginRight: '0.5rem' }} /> Debenture Interest Payable - Public Sector</h2>
+
+          <Card className="filter-card-modern">
+            <Card.Body>
+              <DateRangeFilter onApply={setRange} />
+            </Card.Body>
+          </Card>
+
+          {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
+          {loading ? (
+            <div className="loading-container-modern">
+              <div className="text-center">
+                <div className="loading-spinner-modern mx-auto mb-3"></div>
+                <p className="fs-5 text-muted">Loading report...</p>
+              </div>
+            </div>
+          ) : (
+            <Card className="chart-card-modern">
+              <Card.Header><FaChartBar style={{ marginRight: '0.5rem' }} /> {data.length} public sector companies ({rangeText})</Card.Header>
+              <Card.Body>
+                {data.length > 0 ? (
+                  <div className="table-responsive">
+                    <Table className="table-modern mb-0">
+                      <thead>
+                        <tr>
+                          <th>Company Name</th>
+                          <th className="text-end">Total Amount (NPR)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.map((row, idx) => (
+                          <tr key={idx}>
+                            <td>{row.key}</td>
+                            <td className="text-end">{formatCurrency(row.total)}</td>
+                          </tr>
+                        ))}
+                        <tr className="table-active fw-bold">
+                          <td>Grand Total</td>
+                          <td className="text-end">{formatCurrency(total)}</td>
+                        </tr>
+                      </tbody>
+                    </Table>
+                  </div>
+                ) : (
+                  <p className="text-muted mb-0">No data found for the selected date range.</p>
+                )}
+              </Card.Body>
+            </Card>
+          )}
+        </Container>
+      </div>
+    </>
+  );
+};
+
+export default InterestPrivateSector;

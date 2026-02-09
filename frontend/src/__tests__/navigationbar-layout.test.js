@@ -25,6 +25,11 @@ describe('NavigationBar layout & brand position', () => {
     const top = container.querySelector('.navbar-top');
     expect(top).toBeTruthy();
     expect(top.firstElementChild).toHaveClass('navbar-brand');
+
+    // Ensure the controls wrapper exists and is the last child
+    const controls = top.querySelector('.navbar-controls');
+    expect(controls).toBeTruthy();
+    expect(top.lastElementChild).toBe(controls);
   });
 
   test('CSS includes margin-right: auto for .navbar-brand to keep it left-aligned', () => {
