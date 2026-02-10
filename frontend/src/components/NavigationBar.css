@@ -188,13 +188,33 @@ body, html {
   justify-content: flex-start;
   width: 100%;
   padding: 8px 10px;
-  background: linear-gradient(135deg, var(--nav-grad-start-2) 0%, var(--nav-grad-mid-2) 100%);
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  /* Lighter, frosted pastel purple for a modern, airy look */
+  -webkit-backdrop-filter: blur(12px) saturate(120%);
+  backdrop-filter: blur(12px) saturate(120%);
+  background: linear-gradient(135deg, rgba(255,247,255,0.92) 0%, rgba(243,229,255,0.92) 50%, rgba(245,250,255,0.92) 100%) !important;
+  border-top: 1px solid rgba(255,255,255,0.6);
+  box-shadow: 0 8px 30px rgba(124,58,237,0.06), inset 0 1px 0 rgba(255,255,255,0.85);
   overflow: visible;
-  /* removed redundant "overflow: visible !important" */
   position: relative;
   z-index: 50;
+}
+
+/* Ensure nav items are visible against the light menu */
+.navbar-menu-fullwidth .nav-item {
+  color: #1e293b !important; /* dark for contrast */
+  text-shadow: none !important;
+}
+
+/* Dropdowns inside fullwidth menu — light panels with a subtle purple edge */
+.navbar-menu-fullwidth .dropdown-menu {
+  background: linear-gradient(180deg, #ffffff, #fff7ff) !important;
+  color: #1e293b !important;
+  border: 1px solid rgba(124,58,237,0.06) !important;
+  box-shadow: 0 10px 30px rgba(124,58,237,0.06) !important;
+}
+
+.navbar-menu-fullwidth .dropdown-item {
+  color: #1e293b !important;
 }
 
 .nav-links {
@@ -721,10 +741,12 @@ body, html {
     top: 55px;
     left: 0;
     right: 0;
-    /* Mobile full-width menu - purple */
-    background: linear-gradient(135deg, #7c3aed 0%, #9d7de3 100%) !important;
-    border-top: 1px solid rgba(255,255,255,0.12) !important;
-    box-shadow: 0 10px 30px rgba(136,96,208,0.12) !important;
+    /* Mobile full-width menu - lighter purple */
+    -webkit-backdrop-filter: blur(8px) saturate(115%);
+    backdrop-filter: blur(8px) saturate(115%);
+    background: linear-gradient(135deg, #efe6ff 0%, #e6d6ff 100%) !important;
+    border-top: 1px solid rgba(139,92,246,0.12) !important;
+    box-shadow: 0 10px 30px rgba(124,58,237,0.08) !important;
     flex-direction: column;
     align-items: flex-start;
     padding: 0;
@@ -861,4 +883,23 @@ body, html {
 .modern-navbar .dropdown-menu {
   background: linear-gradient(180deg, #fff0f6 0%, #ffe6f0 100%) !important;
   color: #1e293b !important;
+}
+
+/* High-specificity override: slightly lighter purple navbar menu (placed last to ensure it wins) */
+.modern-navbar .navbar-menu-fullwidth,
+.navbar .modern-navbar .navbar-menu-fullwidth {
+  background: linear-gradient(135deg,#efe6ff 0%, #e6d6ff 55%, #d9c6ff 100%) !important;
+  border-top: 1px solid rgba(139,92,246,0.12) !important;
+  box-shadow: 0 8px 30px rgba(124,58,237,0.08) !important;
+}
+.modern-navbar .navbar-menu-fullwidth .nav-item {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.12) !important;
+}
+@media (max-width:768px) {
+  .modern-navbar .navbar-menu-fullwidth {
+    background: linear-gradient(135deg,#efe6ff,#e6d6ff) !important;
+    border-top:1px solid rgba(139,92,246,0.12) !important;
+    box-shadow:0 10px 30px rgba(124,58,237,0.08) !important;
+  }
 }
