@@ -1,36 +1,17 @@
-name: Frontend Tests
+name: Frontend Tests (disabled)
+
+# This workflow has been disabled by the cleanup chore to avoid running E2E/unit tests
+# in CI automatically while test artifacts and Playwright configs are removed.
+# To run tests manually, use the workflow_dispatch event or re-enable the steps below.
 
 on:
-  push:
-    branches: [ '**' ]
-  pull_request:
-    branches: [ '**' ]
+  workflow_dispatch: {}
 
 jobs:
-  frontend-tests:
+  note:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Use Node.js 18
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Install frontend dependencies
-        working-directory: frontend
-        run: npm ci
-
-      - name: Run unit tests (CI mode)
-        working-directory: frontend
-        run: npm run test:unit-ci
-
-      - name: Install Playwright browsers
-        working-directory: frontend
-        run: npx playwright install --with-deps
-
-      - name: Run Playwright tests
-        working-directory: frontend
-        run: npx playwright test --reporter=list
+      - name: Notice
+        run: echo "Frontend tests are disabled in CI. Re-enable this workflow to run unit/e2e tests in CI."
