@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Card, Button, Spinner, Alert, Table, Form, Modal, ButtonGroup, Row, Col, Dropdown } from 'react-bootstrap';
-import { FaChartBar, FaBuilding, FaChevronRight } from 'react-icons/fa';
+import { Container, Card, Button, Spinner, Alert, Table, Form, Modal, ButtonGroup, Row, Col } from 'react-bootstrap';
+import { FaChartBar, FaBuilding, FaDownload } from 'react-icons/fa';
 import NavigationBar from '../../components/NavigationBar';
 import DateRangeFilter from '../../components/DateRangeFilter';
+import CustomSelect from '../../components/CustomSelect';
 import { reportService, interestService, companyService, clientService } from '../../services/api';
 import { buildDateParams, formatCurrency, normalizeList } from '../../utils/reportUtils';
 import '../../styles/dashboard.css';
@@ -24,7 +25,13 @@ const InterestSummaryReports = () => {
   const [allInterestData, setAllInterestData] = useState([]);
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState('all');
   const [uniqueCompanies, setUniqueCompanies] = useState([]);
-  const [sectorSummary, setSectorSummary] = useState([]);
+  const [selectedFiscalYear, setSelectedFiscalYear] = useState('');
+  
+
+  const normalizeFiscalYear = (value) => String(value || '')
+    .trim()
+    .replace('-', '/')
+    .replace(/\s+/g, '');
 
   const fetchSummary = useCallback(async (dateRange) => {
     setLoading(true);
@@ -56,10 +63,12 @@ const InterestSummaryReports = () => {
         net: filteredItems.reduce((sum, item) => sum + (item.net_payable || 0), 0),
       });
 
-      // Filter by selected company if not "all"
-      const filteredItems = selectedCompanyFilter === 'all' 
-        ? items 
-        : items.filter(item => item.company_name === selectedCompanyFilter);
+      // Filter by selected company + fiscal year
+      const filteredItems = items.filter((item) => {
+        const byCompany = selectedCompanyFilter === 'all' || item.company_name === selectedCompanyFilter;
+        const byFiscal = !selectedFiscalYear || normalizeFiscalYear(item.fiscal_year) === normalizeFiscalYear(selectedFiscalYear);
+        return byCompany && byFiscal;
+      });
 
       const publicSummary = summarize(filteredItems.filter(item => publicCompanyIds.has(item.company)));
       const institutionSummary = summarize(filteredItems.filter(item => institutionClientIds.has(item.client)));
@@ -73,21 +82,11 @@ const InterestSummaryReports = () => {
         { type: 'Total', ...totalSummary, isTotal: true },
       ]);
 
-      // Sector-wise summary (Public, Private, Mutual Fund)
-      const publicSector = items.filter(item => item.company_sector === 'Public');
-      const privateSector = items.filter(item => item.company_sector === 'Private');
-      const mutualFund = items.filter(item => item.company_sector === 'Mutual Fund' || (item.company_sector && item.company_sector.toLowerCase().includes('mutual')));
-      
-      setSectorSummary([
-        { type: 'Public', ...summarize(publicSector) },
-        { type: 'Private', ...summarize(privateSector) },
-        { type: 'Mutual Fund', ...summarize(mutualFund) },
-        { type: 'Total', ...summarize(items), isTotal: true },
-      ]);
+      // Sector summary removed per request
 
       // Company breakdown with payment status
       const companySummary = {};
-      items.forEach(item => {
+      filteredItems.forEach(item => {
         const company = item.company_name || 'Unknown';
         if (!companySummary[company]) {
           companySummary[company] = { count: 0, gross: 0, tax: 0, net: 0, paid: 0, pending: 0 };
@@ -111,18 +110,23 @@ const InterestSummaryReports = () => {
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to fetch summary data');
       setSummaryRows([]);
-      setSectorSummary([]);
+      // sectorSummary cleared (removed)
       setCompanyBreakdown([]);
       setAllCompanies([]);
       setAllInterestData([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedCompanyFilter]);
+  }, [selectedCompanyFilter, selectedFiscalYear]);
 
   useEffect(() => {
     fetchSummary(range);
-  }, [range, selectedCompanyFilter, fetchSummary]);
+  }, [range, selectedCompanyFilter, selectedFiscalYear, fetchSummary]);
+
+  const handleCompanyFilterChange = (companyName) => {
+    setSelectedCompanyFilter(companyName);
+    setSelectedFiscalYear('');
+  };
 
   // Filter companies by search term and top N
   useEffect(() => {
@@ -203,6 +207,21 @@ const InterestSummaryReports = () => {
     ? `From ${range.fromDate} to ${range.toDate}`
     : 'All dates';
 
+  const companyFiscalYears = selectedCompanyFilter === 'all'
+    ? []
+    : [...new Set(allInterestData
+      .filter(item => item.company_name === selectedCompanyFilter)
+      .map(item => normalizeFiscalYear(item.fiscal_year))
+      .filter(Boolean))]
+        .sort()
+        .reverse();
+
+  const fiscalYearOptions = (selectedCompanyFilter === 'all'
+    ? [...new Set(allInterestData.map(item => normalizeFiscalYear(item.fiscal_year)).filter(Boolean))]
+    : companyFiscalYears)
+      .sort()
+      .reverse();
+
   return (
     <>
       <NavigationBar />
@@ -210,32 +229,80 @@ const InterestSummaryReports = () => {
         <Container fluid>
           <h2 className="dashboard-header">📑 Debenture Interest Payable - Summary Reports</h2>
 
-          <Card className="filter-card-modern">
-            <Card.Body>
-              <DateRangeFilter onApply={setRange} />
-            </Card.Body>
-          </Card>
+          <Row className="g-3">
+            <Col lg={8}>
+              <Card className="filter-card-modern summary-report-card">
+                <Card.Body>
+                  <DateRangeFilter onApply={setRange} />
+                  <Row className="mt-3 summary-report-controls">
+                    <Col md={6} className="mb-2 mb-md-0">
+                      <Form.Label className="text-muted small">Company</Form.Label>
+                      <CustomSelect
+                        options={[{ value: 'all', label: 'All Companies' }, ...uniqueCompanies.map((c) => ({ value: c, label: c }))]}
+                        value={selectedCompanyFilter}
+                        onChange={(val) => handleCompanyFilterChange(val)}
+                        placeholder="All Companies"
+                      />
+                    </Col>
+                    <Col md={6}>
+                      <Form.Label className="text-muted small">Fiscal Year</Form.Label>
+                      <CustomSelect
+                        options={[{ value: '', label: 'All Fiscal Years' }, ...fiscalYearOptions.map((fy) => ({ value: fy, label: fy }))]}
+                        value={selectedFiscalYear}
+                        onChange={(val) => setSelectedFiscalYear(val)}
+                        placeholder="All Fiscal Years"
+                      />
+                    </Col>
+                  </Row>
+                  {selectedCompanyFilter !== 'all' && (
+                    <div className="summary-report-yearbox mt-3">
+                      <div className="summary-report-yearbox-title">Available Fiscal Years for {selectedCompanyFilter}</div>
+                      <div className="summary-report-yearbox-list">
+                        {companyFiscalYears.length === 0 ? (
+                          <div className="text-muted small">No fiscal years found for this company.</div>
+                        ) : (
+                          companyFiscalYears.map((fy) => (
+                            <button
+                              key={fy}
+                              type="button"
+                              className={`summary-report-yearbox-pill ${normalizeFiscalYear(selectedFiscalYear) === normalizeFiscalYear(fy) ? 'is-active' : ''}`}
+                              onClick={() => setSelectedFiscalYear(fy)}
+                            >
+                              {fy}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </Card.Body>
+              </Card>
+            </Col>
+            <Col lg={4}>
+              <Card className="chart-card-modern summary-report-card">
+                <Card.Header><FaDownload style={{ marginRight: '0.5rem' }} /> Export Options</Card.Header>
+                <Card.Body>
+                  <p className="text-muted mb-3">{rangeText}</p>
+                  <div className="d-flex flex-column gap-2">
+                    <Button
+                      variant="primary"
+                      onClick={handleExport}
+                      disabled={exporting}
+                      className="d-flex align-items-center gap-2"
+                    >
+                      {exporting && <Spinner animation="border" size="sm" />}
+                      {exporting ? 'Exporting...' : 'Export Full Report'}
+                    </Button>
+                    <p className="text-muted mb-0 small">
+                      Download detailed interest payable summary as Excel file
+                    </p>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          </Row>
 
           {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
-          <Card className="chart-card-modern">
-          <Card.Body>
-            <p className="text-muted mb-3">{rangeText}</p>
-            <div className="d-flex gap-2">
-              <Button
-                variant="primary"
-                onClick={handleExport}
-                disabled={exporting}
-                className="d-flex align-items-center gap-2"
-              >
-                {exporting && <Spinner animation="border" size="sm" />}
-                {exporting ? 'Exporting...' : 'Export Full Report'}
-              </Button>
-              <p className="text-muted mb-0 ms-2 align-self-center">
-                Download detailed interest payable summary as Excel file
-              </p>
-            </div>
-          </Card.Body>
-        </Card>
 
         {loading ? (
           <div className="loading-container-modern">
@@ -246,116 +313,12 @@ const InterestSummaryReports = () => {
           </div>
         ) : (
           <>
-            {/* Sector Summary Section */}
-            <Card className="chart-card-modern">
-              <Card.Header><FaBuilding style={{ marginRight: '0.5rem' }} /> Debenture Interest Summary by Sector</Card.Header>
-              <Card.Body>
-                <p className="text-muted small mb-3">Breakdown by company sector (Public/Private/Mutual Fund)</p>
-                <div className="table-responsive">
-                  <Table className="table-modern mb-0">
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th className="text-end">Records</th>
-                        <th className="text-end">Amount</th>
-                        <th className="text-end">Tax</th>
-                        <th className="text-end">Net Interest Payable</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sectorSummary.map((row, idx) => (
-                        <tr key={idx} className={row.isTotal ? 'table-active fw-bold' : ''}>
-                          <td>{row.type}</td>
-                          <td className="text-end">{row.count}</td>
-                          <td className="text-end">{formatCurrency(row.gross)}</td>
-                          <td className="text-end">{formatCurrency(row.tax)}</td>
-                          <td className="text-end">{formatCurrency(row.net)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </Table>
-                </div>
-              </Card.Body>
-            </Card>
+            {/* Debenture Interest Summary by Sector removed per request */}
 
-            <Card className="chart-card-modern">
+            <Card className="chart-card-modern summary-report-card">
               <Card.Header>
                 <div className="d-flex justify-content-between align-items-center">
                   <span><FaChartBar style={{ marginRight: '0.5rem' }} /> Interest Summary by Type</span>
-                  <div className="min-w-300">
-                    <Dropdown>
-                      <Dropdown.Toggle
-                        className="modern-dropdown-toggle"
-                        style={{
-                          background: 'linear-gradient(135deg, #faf5ff, #f3e8ff)',
-                          color: '#8860D0',
-                          border: '2px solid #e9d5ff',
-                          padding: '8px 16px',
-                          fontSize: '0.875rem',
-                          fontWeight: '600',
-                          borderRadius: '12px',
-                          boxShadow: '0 2px 8px rgba(136, 96, 208, 0.1)',
-                          transition: 'all 0.3s ease',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          width: '100%',
-                          justifyContent: 'space-between'
-                        }}
-                      >
-                        <span>{selectedCompanyFilter === 'all' ? 'All Companies' : selectedCompanyFilter}</span>
-                        <FaChevronRight size={12} style={{ transition: 'transform 0.18s ease' }} />
-                      </Dropdown.Toggle>
-                      <Dropdown.Menu
-                        style={{
-                          borderRadius: '12px',
-                          border: '2px solid #e9d5ff',
-                          boxShadow: '0 8px 24px rgba(136, 96, 208, 0.15)',
-                          padding: '8px',
-                          animation: 'dropdownSlideIn 0.2s ease-out',
-                          width: '100%',
-                          maxHeight: '300px',
-                          overflowY: 'auto'
-                        }}
-                      >
-                        <Dropdown.Item
-                          onClick={() => setSelectedCompanyFilter('all')}
-                          className="modern-dropdown-item"
-                          active={selectedCompanyFilter === 'all'}
-                          style={{
-                            borderRadius: '8px',
-                            padding: '10px 14px',
-                            marginBottom: '4px',
-                            fontWeight: selectedCompanyFilter === 'all' ? '600' : '500',
-                            transition: 'all 0.2s ease',
-                            background: selectedCompanyFilter === 'all' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
-                            color: selectedCompanyFilter === 'all' ? '#ffffff' : '#374151'
-                          }}
-                        >
-                          All Companies
-                        </Dropdown.Item>
-                        {uniqueCompanies.map((company, idx) => (
-                          <Dropdown.Item
-                            key={idx}
-                            onClick={() => setSelectedCompanyFilter(company)}
-                            className="modern-dropdown-item"
-                            active={selectedCompanyFilter === company}
-                            style={{
-                              borderRadius: '8px',
-                              padding: '10px 14px',
-                              marginBottom: '4px',
-                              fontWeight: selectedCompanyFilter === company ? '600' : '500',
-                              transition: 'all 0.2s ease',
-                              background: selectedCompanyFilter === company ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
-                              color: selectedCompanyFilter === company ? '#ffffff' : '#374151'
-                            }}
-                          >
-                            {company}
-                          </Dropdown.Item>
-                        ))}
-                      </Dropdown.Menu>
-                    </Dropdown>
-                  </div>
                 </div>
               </Card.Header>
               <Card.Body>
@@ -365,7 +328,7 @@ const InterestSummaryReports = () => {
                     : `Showing data for: ${selectedCompanyFilter}`}
                 </p>
                 <div className="table-responsive">
-                  <Table className="table-modern mb-0">
+                  <Table className="table-modern mb-0 summary-report-table">
                     <thead>
                       <tr>
                         <th>Type</th>
@@ -391,7 +354,7 @@ const InterestSummaryReports = () => {
               </Card.Body>
             </Card>
 
-            <Card className="chart-card-modern">
+            <Card className="chart-card-modern summary-report-card">
               <Card.Header>
                 <div className="d-flex justify-content-between align-items-center">
                   <span><FaBuilding style={{ marginRight: '0.5rem' }} /> Company-wise Breakdown</span>
@@ -410,7 +373,7 @@ const InterestSummaryReports = () => {
                   Interest payables grouped by company ({allCompanies.length} companies)
                 </p>
 
-                <Row className="mb-3">
+                <Row className="mb-3 summary-report-controls">
                   <Col md={6}>
                     <Form.Control
                       type="text"
@@ -444,7 +407,7 @@ const InterestSummaryReports = () => {
                 </Row>
 
                 <div className="table-responsive table-scrollable">
-                  <Table className="table-modern mb-0 table-sticky-header">
+                  <Table className="table-modern mb-0 table-sticky-header summary-report-table">
                     <thead>
                       <tr>
                         <th>Company Name</th>

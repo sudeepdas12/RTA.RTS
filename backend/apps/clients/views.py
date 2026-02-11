@@ -30,7 +30,8 @@ class ClientViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(
                 Q(client_code__icontains=search) |
                 Q(full_name__icontains=search) |
-                Q(pan_or_citizenship__icontains=search)
+                Q(pan_or_citizenship__icontains=search) |
+                Q(boid__icontains=search)
             )
         
         # Status filter
@@ -68,17 +69,17 @@ class ClientViewSet(viewsets.ModelViewSet):
                 for row in sheet.iter_rows(min_row=2, values_only=True):
                     data.append(dict(zip(headers, row)))
             
-            # Expected columns
+            # Expected columns (BOID is required)
             expected_columns = [
-                'client_code', 'full_name', 'holder_type',
+                'client_code', 'full_name', 'boid', 'holder_type',
                 'pan_or_citizenship', 'bank_name', 'bank_account_no'
             ]
             
             if not data:
                 return Response({'error': 'No data found in file'}, status=status.HTTP_400_BAD_REQUEST)
             
-            # Validate required columns
-            missing_columns = [col for col in expected_columns[:2] if col not in data[0]]
+            # Validate required columns (client_code, full_name, boid)
+            missing_columns = [col for col in expected_columns[:3] if col not in data[0]]
             if missing_columns:
                 return Response(
                     {'error': f'Missing required columns: {", ".join(missing_columns)}'},
@@ -94,14 +95,16 @@ class ClientViewSet(viewsets.ModelViewSet):
                 try:
                     client_code = str(row['client_code']).strip().upper()
                     full_name = str(row['full_name']).strip()
+                    boid = str(row.get('boid', '')).strip().upper()
                     
-                    if not client_code or not full_name:
-                        errors.append(f"Row {index + 2}: Client code and name are required")
+                    if not client_code or not full_name or not boid:
+                        errors.append(f"Row {index + 2}: Client code, name and BOID are required")
                         continue
                     
                     client_data = {
                         'client_code': client_code,
                         'full_name': full_name,
+                        'boid': boid,
                         'holder_type': str(row.get('holder_type', '')).strip() or None,
                         'pan_or_citizenship': str(row.get('pan_or_citizenship', '')).strip() or None,
                         'bank_name': str(row.get('bank_name', '')).strip() or None,
@@ -134,10 +137,19 @@ class ClientViewSet(viewsets.ModelViewSet):
                 {'error': f'Error processing file: {str(e)}'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-    
+
     @action(detail=False, methods=['get'])
-    def export_template(self, request):
-        """Download Excel template for client upload"""
+    def lookup_boid(self, request):
+        """Lookup client by BOID"""
+        boid = request.query_params.get('boid')
+        if not boid:
+            return Response({'error': 'BOID is required as query parameter'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            client = Client.objects.get(boid__iexact=boid.strip())
+            serializer = ClientSerializer(client)
+            return Response(serializer.data)
+        except Client.DoesNotExist:
+            return Response({'message': 'Not found'}, status=status.HTTP_404_NOT_FOUND)
         from django.http import HttpResponse
         import xlsxwriter
         
@@ -145,9 +157,9 @@ class ClientViewSet(viewsets.ModelViewSet):
         workbook = xlsxwriter.Workbook(output)
         worksheet = workbook.add_worksheet('Clients')
         
-        # Headers
+        # Headers (include BOID)
         headers = [
-            'client_code', 'full_name', 'holder_type',
+            'client_code', 'full_name', 'boid', 'holder_type',
             'pan_or_citizenship', 'bank_name', 'bank_account_no'
         ]
         
@@ -156,10 +168,10 @@ class ClientViewSet(viewsets.ModelViewSet):
         for col, header in enumerate(headers):
             worksheet.write(0, col, header, header_format)
         
-        # Sample data
+        # Sample data (include BOID sample)
         sample_data = [
-            ['CL001', 'Ram Kumar Shrestha', 'Public', '12345678', 'NIC Asia Bank', '1234567890123'],
-            ['CL002', 'ABC Investment Pvt. Ltd', 'Institution', '987654321', 'Standard Chartered', '9876543210987'],
+            ['CL001', 'Ram Kumar Shrestha', 'BOID-CL001', 'Public', '12345678', 'NIC Asia Bank', '1234567890123'],
+            ['CL002', 'ABC Investment Pvt. Ltd', 'BOID-CL002', 'Institution', '987654321', 'Standard Chartered', '9876543210987'],
         ]
         
         for row_idx, row_data in enumerate(sample_data, start=1):

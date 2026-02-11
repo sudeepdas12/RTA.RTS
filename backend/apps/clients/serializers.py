@@ -20,6 +20,21 @@ class ClientSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError("Client code already exists")
         return value.upper()
 
+    def validate_boid(self, value):
+        """Validate BOID is present (on create) and unique"""
+        if value is None or str(value).strip() == '':
+            if self.instance is None:
+                raise serializers.ValidationError("BOID is required")
+            return value
+
+        value = str(value).strip().upper()
+        qs = Client.objects.filter(boid=value)
+        if self.instance:
+            qs = qs.exclude(client_id=self.instance.client_id)
+        if qs.exists():
+            raise serializers.ValidationError("BOID already exists")
+        return value
+
 
 class ClientUploadSerializer(serializers.Serializer):
     """Serializer for bulk client upload"""

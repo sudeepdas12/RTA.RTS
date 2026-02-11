@@ -4,6 +4,7 @@ import { FaEdit, FaTrash, FaDownload, FaUsers, FaChevronRight } from 'react-icon
 import { toast } from 'react-toastify';
 import NavigationBar from '../components/NavigationBar';
 import api from '../services/api';
+import CustomSelect from '../components/CustomSelect';
 import '../styles/dashboard.css';
 
 const Clients = () => {
@@ -12,12 +13,14 @@ const Clients = () => {
   const [loading, setLoading] = useState(true);
   const [error] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showBoidModal, setShowBoidModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('All');
   const [currentClient, setCurrentClient] = useState({
     client_code: '',
     client_name: '',
+    boid: '',
     company_id: '',
     holder_type: 'Individual',
     folio_no: '',
@@ -25,6 +28,8 @@ const Clients = () => {
     phone: '',
     address: ''
   });
+  const [boidQuery, setBoidQuery] = useState('');
+  const [boidResult, setBoidResult] = useState(null);
 
   useEffect(() => {
     fetchClients();
@@ -81,6 +86,12 @@ const Clients = () => {
 
   const handleSave = async () => {
     try {
+      // Basic client-side validation for required BOID
+      if (!currentClient.boid || String(currentClient.boid).trim() === '') {
+        toast.error('BOID is required');
+        return;
+      }
+
       if (editMode) {
         await api.put(`/clients/${currentClient.client_id}/`, currentClient);
         toast.success('Client updated successfully');
@@ -91,7 +102,8 @@ const Clients = () => {
       fetchClients();
       handleCloseModal();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to save client');
+      const msg = error.response?.data?.boid || error.response?.data?.message || 'Failed to save client';
+      toast.error(msg);
     }
   };
 
@@ -123,11 +135,12 @@ const Clients = () => {
   };
 
   const filteredClients = clients.filter(client => {
-    const name = (client.client_name || '').toLowerCase();
+    const name = (client.client_name || client.full_name || '').toLowerCase();
     const code = (client.client_code || '').toLowerCase();
     const folio = (client.folio_no || '').toLowerCase();
+    const boid = (client.boid || '').toLowerCase();
     const term = searchTerm.toLowerCase();
-    const matchesSearch = name.includes(term) || code.includes(term) || folio.includes(term);
+    const matchesSearch = name.includes(term) || code.includes(term) || folio.includes(term) || boid.includes(term);
     const matchesType = filterType === 'All' || client.holder_type === filterType;
     return matchesSearch && matchesType;
   });
@@ -177,7 +190,7 @@ const Clients = () => {
             <Col md={4} className="mb-2">
               <Form.Control
                 type="text"
-                placeholder="Search by name, code, or folio..."
+                placeholder="Search by name, code, BOID, or folio..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -221,8 +234,8 @@ const Clients = () => {
                     active={filterType === 'All'}
                     className="modern-dropdown-item"
                     style={{
-                      background: filterType === 'All' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
-                      color: filterType === 'All' ? '#ffffff' : '#1e293b',
+                      background: filterType === 'All' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
+                      color: '#1e293b',
                       fontWeight: filterType === 'All' ? '700' : '500',
                       padding: '12px 16px',
                       borderRadius: '8px',
@@ -238,8 +251,8 @@ const Clients = () => {
                     active={filterType === 'Individual'}
                     className="modern-dropdown-item"
                     style={{
-                      background: filterType === 'Individual' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
-                      color: filterType === 'Individual' ? '#ffffff' : '#1e293b',
+                      background: filterType === 'Individual' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
+                      color: '#1e293b',
                       fontWeight: filterType === 'Individual' ? '700' : '500',
                       padding: '12px 16px',
                       borderRadius: '8px',
@@ -255,8 +268,8 @@ const Clients = () => {
                     active={filterType === 'Corporate'}
                     className="modern-dropdown-item"
                     style={{
-                      background: filterType === 'Corporate' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
-                      color: filterType === 'Corporate' ? '#ffffff' : '#1e293b',
+                      background: filterType === 'Corporate' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
+                      color: '#1e293b',
                       fontWeight: filterType === 'Corporate' ? '700' : '500',
                       padding: '12px 16px',
                       borderRadius: '8px',
@@ -272,8 +285,8 @@ const Clients = () => {
                     active={filterType === 'Joint'}
                     className="modern-dropdown-item"
                     style={{
-                      background: filterType === 'Joint' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
-                      color: filterType === 'Joint' ? '#ffffff' : '#1e293b',
+                      background: filterType === 'Joint' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
+                      color: '#1e293b',
                       fontWeight: filterType === 'Joint' ? '700' : '500',
                       padding: '12px 16px',
                       borderRadius: '8px',
@@ -287,6 +300,9 @@ const Clients = () => {
               </Dropdown>
             </Col>
             <Col md={5} className="text-end mb-2">
+              <Button variant="outline-secondary" className="me-2" onClick={() => setShowBoidModal(true)}>
+                Used BOID
+              </Button>
               <Button variant="primary" onClick={handleExport}>
                 <FaDownload /> Export
               </Button>
@@ -301,6 +317,7 @@ const Clients = () => {
               <thead>
                 <tr>
                   <th>Code</th>
+                  <th>BOID</th>
                   <th>Client Name</th>
                   <th>Type</th>
                   <th>Folio No</th>
@@ -312,13 +329,14 @@ const Clients = () => {
               <tbody>
                 {filteredClients.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="text-center">No clients found</td>
+                    <td colSpan="8" className="text-center">No clients found</td>
                   </tr>
                 ) : (
                   filteredClients.map(client => (
                     <tr key={client.client_id}>
                       <td><strong>{client.client_code}</strong></td>
-                      <td>{client.client_name}</td>
+                      <td>{client.boid || '-'}</td>
+                      <td>{client.client_name || client.full_name}</td>
                       <td><Badge bg={client.holder_type === 'Individual' ? 'primary' : client.holder_type === 'Corporate' ? 'success' : 'info'}>{client.holder_type}</Badge></td>
                       <td>{client.folio_no || '-'}</td>
                       <td>{client.email || '-'}</td>
@@ -360,15 +378,24 @@ const Clients = () => {
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-3">
+                    <Form.Label>BOID *</Form.Label>
+                    <Form.Control
+                      type="text"
+                      value={currentClient.boid}
+                      onChange={(e) => setCurrentClient({ ...currentClient, boid: e.target.value })}
+                      required
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
                     <Form.Label>Holder Type *</Form.Label>
-                    <Form.Select
+                    <CustomSelect
+                      options={[{ value: 'Individual', label: 'Individual' }, { value: 'Corporate', label: 'Corporate' }, { value: 'Joint', label: 'Joint' }]}
                       value={currentClient.holder_type}
-                      onChange={(e) => setCurrentClient({ ...currentClient, holder_type: e.target.value })}
-                    >
-                      <option value="Individual">Individual</option>
-                      <option value="Corporate">Corporate</option>
-                      <option value="Joint">Joint</option>
-                    </Form.Select>
+                      onChange={(val) => setCurrentClient({ ...currentClient, holder_type: val })}
+                      placeholder="Select Holder Type"
+                    />
                   </Form.Group>
                 </Col>
               </Row>
@@ -385,15 +412,13 @@ const Clients = () => {
                 <Col md={6}>
                   <Form.Group className="mb-3">
                     <Form.Label>Company</Form.Label>
-                    <Form.Select
+                    <CustomSelect
+                      options={companies.map((c) => ({ value: c.company_id, label: c.company_name }))}
                       value={currentClient.company_id}
-                      onChange={(e) => setCurrentClient({ ...currentClient, company_id: e.target.value })}
-                    >
-                      <option value="">Select Company</option>
-                      {companies.map(company => (
-                        <option key={company.company_id} value={company.company_id}>{company.company_name}</option>
-                      ))}
-                    </Form.Select>
+                      onChange={(val) => setCurrentClient({ ...currentClient, company_id: val })}
+                      placeholder="Select Company"
+                      isSearchable
+                    />
                   </Form.Group>
                 </Col>
                 <Col md={6}>
@@ -447,6 +472,49 @@ const Clients = () => {
             </Button>
           </Modal.Footer>
         </Modal>
+
+        <Modal show={showBoidModal} onHide={() => { setShowBoidModal(false); setBoidResult(null); setBoidQuery(''); }}>
+          <Modal.Header closeButton>
+            <Modal.Title>Used BOID Lookup</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            <Form>
+              <Form.Group className="mb-3">
+                <Form.Label>BOID</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={boidQuery}
+                  onChange={(e) => setBoidQuery(e.target.value)}
+                  placeholder="Enter BOID to lookup"
+                />
+              </Form.Group>
+              <div className="text-end">
+                <Button variant="primary" onClick={async () => {
+                  try {
+                    const res = await api.get('/clients/lookup_boid/', { params: { boid: boidQuery } });
+                    setBoidResult({ found: true, data: res.data });
+                  } catch (err) {
+                    setBoidResult({ found: false });
+                  }
+                }}>Search</Button>
+              </div>
+              <hr />
+              {boidResult && (boidResult.found ? (
+                <div>
+                  <p><strong>Client Code:</strong> {boidResult.data.client_code}</p>
+                  <p><strong>Client Name:</strong> {boidResult.data.client_name || boidResult.data.full_name}</p>
+                  <p><strong>BOID:</strong> {boidResult.data.boid}</p>
+                </div>
+              ) : (
+                <p className="text-muted">No client found for the provided BOID.</p>
+              ))}
+            </Form>
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={() => { setShowBoidModal(false); setBoidResult(null); setBoidQuery(''); }}>Close</Button>
+          </Modal.Footer>
+        </Modal>
+
         </Container>
       </div>
     </>

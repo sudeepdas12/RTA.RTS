@@ -1,10 +1,55 @@
 /* Modern Premium Dashboard Styles - Inspired by Stripe, Linear, Vercel */
 
 .dashboard-container {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  font-weight: 400;
+  color: #0f172a;
+  /* Restored original light background */
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   min-height: 100vh;
   padding: var(--space-8) 0;
   background-attachment: fixed;
+}
+
+/* Typography scale (polished) */
+:root {
+  --font-base: 14px;
+  --font-lg: 16px;
+  --font-sm: 13px;
+  --font-weight-regular: 400;
+  --font-weight-medium: 600;
+  --color-text: #0f172a;
+  --color-muted: #64748b;
+}
+
+body {
+  font-size: var(--font-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===== LOADING COMPONENTS ===== */
+.loading-container-modern {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 2rem;
+}
+
+.loading-spinner-modern {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(136, 96, 208, 0.1);
+  border-left: 4px solid #8860D0;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* ===== DASHBOARD HERO ===== */
@@ -67,7 +112,36 @@
   color: #ffffff !important;
   background: none !important;
   -webkit-text-fill-color: #ffffff !important;
+  letter-spacing: -0.2px;
 }
+
+/* Headings & labels polish */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.modal-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.form-label {
+  font-weight: 600;
+  color: var(--color-text);
+  font-size: var(--font-sm);
+}
+
+.table-modern tbody tr td, .table-modern thead th {
+  font-size: var(--font-sm);
+}
+
+/* Buttons refinement */
+.btn, .modern-button {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
 
 .hero-subtitle {
   font-size: 1.1rem;
@@ -249,6 +323,154 @@
   font-weight: 800;
   font-size: 2rem;
   text-shadow: none;
+}
+
+/* Summary report polish */
+.summary-report-card {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.summary-report-header {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 55%, #0f766e 100%) !important;
+  color: #f8fafc !important;
+  border: none !important;
+  border-radius: 18px 18px 0 0 !important;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.25);
+}
+
+.summary-report-header .modern-dropdown-toggle {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(15, 23, 42, 0.15) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+}
+
+.summary-report-controls .form-control,
+.summary-report-controls .form-select {
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.summary-report-table thead th {
+  background: linear-gradient(135deg, #e2e8f0 0%, #f8fafc 100%);
+  color: #0f172a;
+  font-weight: 700;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+.summary-report-table tbody tr {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.summary-report-table tbody tr:hover {
+  background: rgba(14, 116, 144, 0.08);
+}
+
+.summary-report-subsection {
+  padding: 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.summary-report-toolbar .btn {
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.summary-report-yearbox {
+  border: 1px dashed rgba(15, 23, 42, 0.2);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(248, 250, 252, 0.95) 100%);
+}
+
+.summary-report-yearbox-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.summary-report-yearbox-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.summary-report-yearbox-pill {
+  border: 1px solid rgba(15, 23, 42, 0.2);
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+/* Fiscal year settings form select (theme-aligned) */
+.fiscal-year-select {
+  border: 2px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  font-weight: 600;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%238860D0' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") !important;
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px 12px;
+}
+
+.fiscal-year-select:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 4px rgba(136, 96, 208, 0.15), var(--focus-ring) !important;
+}
+
+/* Stronger overrides for native dropdowns (Windows/Chrome/Edge) */
+.fiscal-year-select,
+.fiscal-year-select.select,
+select.fiscal-year-select {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  color: var(--text-primary) !important;
+  background-color: var(--bg-primary) !important;
+}
+
+/* Hide the native dropdown arrow on Windows Edge/IE */
+select.fiscal-year-select::-ms-expand {
+  display: none;
+}
+
+/* Force option styling */
+.fiscal-year-select option {
+  background: #ffffff !important;
+  color: var(--text-primary) !important;
+}
+
+/* Force selected option styling */
+.fiscal-year-select option:checked,
+.fiscal-year-select option[selected] {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent)) !important;
+  color: #ffffff !important;
+}
+
+
+.summary-report-yearbox-pill:hover {
+  border-color: rgba(14, 116, 144, 0.6);
+  color: #0e7490;
+}
+
+.summary-report-yearbox-pill.is-active {
+  background: linear-gradient(135deg, #0f172a 0%, #0f766e 100%);
+  border-color: transparent;
+  color: #ffffff;
 }
 
 .modern-stat-card {
@@ -452,10 +674,25 @@
   background: #ffffff;
 }
 
-.table-modern thead {
-  background: linear-gradient(135deg, #8860D0 0%, #9d7de3 50%, #b99ef5 100%) !important;
-  color: #ffffff !important;
-  position: relative;
+.table-sticky-header {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table-sticky-header thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: linear-gradient(135deg, #8860D0 0%, #9d7de3 50%, #b99ef5 100%);
+}
+
+.table-sticky-header thead th {
+  position: sticky;
+  top: 0;
+  background: linear-gradient(135deg, #8860D0 0%, #9d7de3 50%, #b99ef5 100%);
+  z-index: 11;
+  border-top: none;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.35);
 }
 
 .table-modern thead th {
@@ -553,6 +790,289 @@
 .filter-card-modern .card-body {
   padding: 1.5rem;
   background: #f8fafc;
+}
+
+/* ===== MODERN DROPDOWN STYLES ===== */
+.modern-dropdown-toggle {
+  border: 2px solid rgba(136, 96, 208, 0.2) !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #faf5ff, #f3e8ff) !important;
+  color: #8860D0 !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  padding: 12px 20px !important;
+  box-shadow: 0 2px 8px rgba(136, 96, 208, 0.08) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.modern-dropdown-toggle:hover {
+  border-color: rgba(136, 96, 208, 0.4) !important;
+  box-shadow: 0 4px 12px rgba(136, 96, 208, 0.15) !important;
+  transform: translateY(-1px) !important;
+}
+
+.modern-dropdown-toggle:focus {
+  border-color: #8860D0 !important;
+  box-shadow: 0 0 0 4px rgba(136, 96, 208, 0.15), 0 4px 12px rgba(136, 96, 208, 0.15) !important;
+}
+
+.modern-dropdown-menu {
+  border: none !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 40px rgba(136, 96, 208, 0.22), 0 6px 18px rgba(0, 0, 0, 0.12) !important;
+  overflow: hidden !important;
+  padding: 8px !important;
+  margin-top: 8px !important;
+  min-width: 200px !important;
+  /* Light pink background for dropdowns */
+  background: linear-gradient(180deg, #fff0f6 0%, #ffe6f0 100%) !important;
+  color: #1e293b !important;
+} 
+
+/* Darker modern dropdown variant (opt-in by adding .darker) */
+.modern-dropdown-menu.darker {
+  background: linear-gradient(135deg,#efe6ff 0%,#e0d6ff 100%) !important;
+  color: #1e293b !important;
+  box-shadow: 0 12px 36px rgba(107,70,193,0.14) !important;
+  border: 1px solid rgba(107,70,193,0.06) !important;
+}
+
+.modern-dropdown-menu.darker .modern-dropdown-item:hover,
+.modern-dropdown-menu.darker .modern-dropdown-item:focus,
+.modern-dropdown-menu.darker .modern-dropdown-item:active {
+  background: linear-gradient(135deg,#efe6ff,#e6dcff) !important;
+  color: #1e293b !important;
+}
+
+.modern-dropdown-item {
+  border-radius: 8px !important;
+  margin-bottom: 4px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border: none !important;
+  color: #1e293b !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  padding: 12px 16px !important;
+  background: transparent !important;
+  text-decoration: none !important;
+  display: block !important;
+  width: 100% !important;
+  text-align: left !important;
+  cursor: pointer !important;
+}
+
+.modern-dropdown-item:hover,
+.modern-dropdown-item:focus,
+.modern-dropdown-item:active {
+  background: linear-gradient(135deg,#fff0f6,#ffe6f0) !important;
+  transform: translateX(2px) !important;
+  color: #1e293b !important;
+  outline: none !important;
+  box-shadow: none !important;
+} 
+
+.modern-dropdown-item.active {
+  background: linear-gradient(135deg, #ffd6ea 0%, #ffc1e0 100%) !important;
+  color: #1e293b !important;
+  font-weight: 700 !important;
+}
+
+.modern-dropdown-item:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* ===== ADDITIONAL DROPDOWN STYLING FOR BOOTSTRAP COMPONENTS ===== */
+.dropdown-item {
+  color: #1e293b !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  padding: 12px 16px !important;
+  transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1) !important;
+} 
+
+.dropdown-item:hover,
+.dropdown-item:focus,
+.dropdown-item:active {
+  background: linear-gradient(135deg,#fff0f6,#ffe6f0) !important;
+  color: #1e293b !important;
+  text-decoration: none !important;
+} 
+
+.dropdown-item.active {
+  background: linear-gradient(135deg, #ffd6ea 0%, #ffc1e0 100%) !important;
+  color: #1e293b !important;
+  font-weight: 700 !important;
+}
+
+/* ===== SELECT ELEMENT STYLING ===== */
+select {
+  color: #1e293b !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  background-color: #ffffff !important;
+  border: 2px solid rgba(136, 96, 208, 0.2) !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  transition: all 0.3s ease !important;
+}
+
+select:focus {
+  border-color: #8860D0 !important;
+  box-shadow: 0 0 0 3px rgba(136, 96, 208, 0.1) !important;
+  outline: none !important;
+}
+
+select:hover {
+  border-color: rgba(136, 96, 208, 0.4) !important;
+}
+
+select option {
+  color: #1e293b !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  background: #ffffff !important;
+  padding: 8px !important;
+}
+
+select option:hover,
+select option:focus,
+select option:checked {
+  background: linear-gradient(135deg,#efe6ff,#f3e8ff) !important;
+  color: #1e293b !important;
+} 
+
+/* ===== LIST GROUP STYLING ===== */
+.list-group-item {
+  color: #1e293b !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(148, 163, 184, 0.2) !important;
+  padding: 12px 16px !important;
+  transition: all 0.2s ease !important;
+}
+
+.list-group-item:hover,
+.list-group-item:focus,
+.list-group-item:active {
+  background: linear-gradient(135deg,#f6f0ff,#efe6ff) !important;
+  color: #8860D0 !important;
+  border-color: rgba(136, 96, 208, 0.3) !important;
+  text-decoration: none !important;
+}
+
+.list-group-item.active {
+  background: linear-gradient(135deg, #ffd6ea 0%, #ffc1e0 100%) !important;
+  color: #1e293b !important;
+  border-color: rgba(30,41,59,0.08) !important;
+  font-weight: 700 !important;
+}
+
+/* ===== REMOVE DEFAULT BLUE FOCUS OUTLINES ===== */
+.dropdown-item:focus,
+.list-group-item:focus,
+select:focus,
+button:focus,
+input:focus,
+textarea:focus,
+.modern-dropdown-item:focus,
+.modern-dropdown-toggle:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(136, 96, 208, 0.1) !important;
+}
+
+/* ===== REMOVE DEFAULT SELECTION COLORS ===== */
+::selection {
+  background: rgba(136, 96, 208, 0.2) !important;
+  color: #8860D0 !important;
+}
+
+::-moz-selection {
+  background: rgba(136, 96, 208, 0.2) !important;
+  color: #8860D0 !important;
+}
+
+/* ===== FORCE THEME COLORS ON ALL INTERACTIVE ELEMENTS ===== */
+* {
+  -webkit-tap-highlight-color: rgba(136, 96, 208, 0.1) !important;
+}
+
+/* ===== SPECIFIC FIXES FOR DRAG AND DROP ===== */
+[draggable="true"] {
+  cursor: grab !important;
+}
+
+[draggable="true"]:active {
+  cursor: grabbing !important;
+}
+
+/* ===== ADDITIONAL DROPDOWN MENU STYLING ===== */
+.dropdown-menu {
+  border: 1px solid rgba(136,96,208,0.06) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(136, 96, 208, 0.06), 0 3px 10px rgba(0, 0, 0, 0.05) !important;
+  padding: 8px !important;
+  margin-top: 8px !important;
+  min-width: 200px !important;
+  background: linear-gradient(135deg, #ffffff 0%, #f6f0ff 100%) !important;
+  color: #1e293b !important;
+  backdrop-filter: blur(6px) saturate(130%) !important;
+}  
+
+/* DARKER VARIANT - opt-in by adding `.darker` to dropdown menu */
+.dropdown-menu.darker {
+  border: 1px solid rgba(107,70,193,0.08) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 12px 36px rgba(107,70,193,0.14) !important;
+  padding: 8px !important;
+  margin-top: 8px !important;
+  min-width: 200px !important;
+  background: linear-gradient(135deg,#efe6ff 0%,#e0d6ff 100%) !important;
+  color: #0f172a !important;
+  backdrop-filter: blur(6px) saturate(140%) !important;
+}
+
+.dropdown-menu.darker .dropdown-item:hover,
+.dropdown-menu.darker .dropdown-item:focus,
+.dropdown-menu.darker .dropdown-item:active {
+  background: linear-gradient(135deg,#efe6ff,#e6dcff) !important;
+  color: #0f172a !important;
+  transform: translateX(2px) !important;
+}
+
+
+.dropdown-menu .dropdown-item {
+  border-radius: 8px !important;
+  margin-bottom: 4px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  color: #1e293b !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  padding: 12px 16px !important;
+  background: transparent !important;
+}
+
+.dropdown-menu .dropdown-item:hover,
+.dropdown-menu .dropdown-item:focus,
+.dropdown-menu .dropdown-item:active {
+  background: linear-gradient(135deg,#fff0f6,#ffe6f0) !important;
+  color: #1e293b !important;
+  transform: translateX(2px) !important;
+}  
+
+.dropdown-menu .dropdown-item:hover,
+.dropdown-menu .dropdown-item:focus,
+.dropdown-menu .dropdown-item:active {
+  background: linear-gradient(135deg,#fff0f6,#ffe6f0) !important;
+  color: #1e293b !important;
+  transform: translateX(2px) !important;
+  text-decoration: none !important;
+}  
+
+.dropdown-menu .dropdown-item.active {
+  background: linear-gradient(135deg, #ffd6ea 0%, #ffc1e0 100%) !important;
+  color: #1e293b !important;
+  font-weight: 700 !important;
 }
 
 .summary-badge {
@@ -799,8 +1319,10 @@
 }
 
 .modern-dropdown-item:hover {
-  background: rgba(136, 96, 208, 0.06) !important;
-}
+  background: linear-gradient(135deg,#efe6ff,#f3e8ff) !important;
+  color: #1e293b !important;
+  box-shadow: none !important;
+} 
 
 /* Chart container size variants */
 .chart-container-sm {
@@ -823,7 +1345,7 @@
 
 /* Login tweaks */
 .login-demo {
-  background: linear-gradient(135deg, rgba(136, 96, 208, 0.08), rgba(157, 125, 227, 0.04));
+  background: linear-gradient(135deg, #fff7ff, #f3e8ff);
   padding: 16px;
   border-radius: 12px;
   border: 1px solid rgba(136, 96, 208, 0.2);
@@ -837,7 +1359,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(136, 96, 208, 0.08), rgba(157, 125, 227, 0.06));
+  background: linear-gradient(135deg, #f6f0ff, #efe6ff);
   color: #8860D0;
   font-size: 28px;
   box-shadow: 0 10px 20px rgba(136, 96, 208, 0.18);
@@ -967,5 +1489,46 @@
 
 .chart-card-modern {
   animation: fadeInUp 0.6s ease-out;
+}
+
+/* ===== COMPLETE MODERN BUTTON STYLES ===== */
+.modern-button {
+  border-radius: 8px;
+  padding: 0.5rem 1.5rem;
+  font-weight: 600;
+  border: none;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #8860D0 0%, #9d7de3 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(136, 96, 208, 0.2);
+}
+
+.modern-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(136, 96, 208, 0.3);
+}
+
+.modern-button:active {
+  transform: translateY(0);
+}
+
+/* ===== SCROLLBAR STYLING ===== */
+.table-scrollable::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.table-scrollable::-webkit-scrollbar-track {
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: 4px;
+}
+
+.table-scrollable::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #ffd6ea, #ffc1e0);
+  border-radius: 4px;
+}
+
+.table-scrollable::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #7c3aed, #8b5cf6);
 }
 

@@ -393,11 +393,19 @@ Internal use only - RTA/RTS Department, Nepal
 
 A convenient docker-compose setup builds and runs the full stack (Postgres, Django backend, React frontend).
 
-Quick start:
+Quick start (recommended):
 
 ```bash
 # from project root
 cp backend/.env.sample backend/.env    # provide secrets if needed
+# then run the one-line starter (preferred)
+start.bat    # or start_project.bat
+```
+
+Notes:
+- `start.bat` is a simple alias that calls `start_project.bat`. The starter prefers Docker Compose when available and falls back to local starts.
+- If you prefer to run services manually, see the "Backend Setup" and "Frontend Setup" sections above.
+
 docker compose up --build
 # backend: http://localhost:8000
 # frontend: http://localhost:3000

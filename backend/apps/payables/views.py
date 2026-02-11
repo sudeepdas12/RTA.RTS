@@ -69,7 +69,8 @@ class InterestPayableViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         """Set created_by on creation"""
-        serializer.save(created_by=self.request.user_obj)
+        user = getattr(self.request, 'user_obj', None) or self.request.user
+        serializer.save(created_by=user)
     
     @action(detail=False, methods=['post'])
     def upload(self, request):
@@ -110,6 +111,7 @@ class InterestPayableViewSet(viewsets.ModelViewSet):
             created = 0
             errors = []
             
+            valid_status = {s for s, _ in InterestPayable.PAYMENT_STATUS_CHOICES}
             for index, row in enumerate(data):
                 try:
                     company_code = str(row['company_code']).strip().upper()
@@ -128,8 +130,8 @@ class InterestPayableViewSet(viewsets.ModelViewSet):
                         errors.append(f"Row {index + 2}: Client {client_code} not found")
                         continue
                     
-                    gross = float(row['gross_interest'])
-                    tax = float(row['tax_amount'])
+                    gross = float(row.get('gross_interest') or 0)
+                    tax = float(row.get('tax_amount') or 0)
                     net = gross - tax
                     
                     due_date_str = str(row['due_date'])
@@ -142,6 +144,12 @@ class InterestPayableViewSet(viewsets.ModelViewSet):
                             errors.append(f"Row {index + 2}: Invalid due date format")
                             continue
                     
+                    payment_status = str(row.get('payment_status', '')).strip().title() or 'Pending'
+                    if payment_status not in valid_status:
+                        errors.append(f"Row {index + 2}: Invalid payment_status '{payment_status}'")
+                        continue
+
+                    user = getattr(request, 'user_obj', None) or request.user
                     InterestPayable.objects.create(
                         company=company,
                         client=client,
@@ -150,7 +158,8 @@ class InterestPayableViewSet(viewsets.ModelViewSet):
                         tax_amount=tax,
                         net_payable=net,
                         due_date=due_date,
-                        created_by=request.user_obj
+                        payment_status=payment_status,
+                        created_by=user
                     )
                     created += 1
                     
@@ -209,7 +218,7 @@ class InterestPayableViewSet(viewsets.ModelViewSet):
         
         headers = [
             'company_code', 'client_code', 'instrument_ref',
-            'gross_interest', 'tax_amount', 'due_date'
+            'gross_interest', 'tax_amount', 'due_date', 'payment_status'
         ]
         
         header_format = workbook.add_format({'bold': True, 'bg_color': '#D9E1F2'})
@@ -217,8 +226,8 @@ class InterestPayableViewSet(viewsets.ModelViewSet):
             worksheet.write(0, col, header, header_format)
         
         sample_data = [
-            ['COMP001', 'CL001', 'BOND-2024-001', 50000, 7500, '2026-03-15'],
-            ['COMP002', 'CL002', 'DEB-2024-002', 100000, 15000, '2026-03-30'],
+            ['COMP001', 'CL001', 'BOND-2024-001', 50000, 7500, '2026-03-15', 'Pending'],
+            ['COMP002', 'CL002', 'DEB-2024-002', 100000, 15000, '2026-03-30', 'Paid'],
         ]
         
         for row_idx, row_data in enumerate(sample_data, start=1):
@@ -269,20 +278,21 @@ class DividendPayableViewSet(viewsets.ModelViewSet):
         if fiscal_year:
             queryset = queryset.filter(fiscal_year=fiscal_year)
 
-        # Date range filter (payment_date)
+        # Date range filter (created_at)
         from_date = self.request.query_params.get('from_date', None)
         to_date = self.request.query_params.get('to_date', None)
 
         if from_date:
-            queryset = queryset.filter(payment_date__gte=from_date)
+            queryset = queryset.filter(created_at__date__gte=from_date)
         if to_date:
-            queryset = queryset.filter(payment_date__lte=to_date)
+            queryset = queryset.filter(created_at__date__lte=to_date)
         
         return queryset
     
     def perform_create(self, serializer):
         """Set created_by on creation"""
-        serializer.save(created_by=self.request.user_obj)
+        user = getattr(self.request, 'user_obj', None) or self.request.user
+        serializer.save(created_by=user)
     
     @action(detail=False, methods=['post'])
     def upload(self, request):
@@ -323,6 +333,7 @@ class DividendPayableViewSet(viewsets.ModelViewSet):
             created = 0
             errors = []
             
+            valid_status = {s for s, _ in DividendPayable.PAYMENT_STATUS_CHOICES}
             for index, row in enumerate(data):
                 try:
                     company_code = str(row['company_code']).strip().upper()
@@ -341,11 +352,17 @@ class DividendPayableViewSet(viewsets.ModelViewSet):
                         errors.append(f"Row {index + 2}: Client {client_code} not found")
                         continue
                     
-                    shares = float(row['shares_held'])
-                    gross = float(row['gross_dividend'])
-                    tax = float(row['tax_amount'])
+                    shares = float(row.get('shares_held') or 0)
+                    gross = float(row.get('gross_dividend') or 0)
+                    tax = float(row.get('tax_amount') or 0)
                     net = gross - tax
+
+                    payment_status = str(row.get('payment_status', '')).strip().title() or 'Pending'
+                    if payment_status not in valid_status:
+                        errors.append(f"Row {index + 2}: Invalid payment_status '{payment_status}'")
+                        continue
                     
+                    user = getattr(request, 'user_obj', None) or request.user
                     DividendPayable.objects.create(
                         company=company,
                         client=client,
@@ -353,8 +370,9 @@ class DividendPayableViewSet(viewsets.ModelViewSet):
                         gross_dividend=gross,
                         tax_amount=tax,
                         net_payable=net,
+                        payment_status=payment_status,
                         fiscal_year=str(row.get('fiscal_year', '')).strip() or None,
-                        created_by=request.user_obj
+                        created_by=user
                     )
                     created += 1
                     
@@ -415,7 +433,7 @@ class DividendPayableViewSet(viewsets.ModelViewSet):
         
         headers = [
             'company_code', 'client_code', 'shares_held',
-            'gross_dividend', 'tax_amount', 'fiscal_year'
+            'gross_dividend', 'tax_amount', 'fiscal_year', 'payment_status'
         ]
         
         header_format = workbook.add_format({'bold': True, 'bg_color': '#D9E1F2'})
@@ -423,8 +441,8 @@ class DividendPayableViewSet(viewsets.ModelViewSet):
             worksheet.write(0, col, header, header_format)
         
         sample_data = [
-            ['COMP001', 'CL001', 1000, 50000, 7500, '2080/81'],
-            ['COMP002', 'CL002', 2500, 125000, 18750, '2080/81'],
+            ['COMP001', 'CL001', 1000, 50000, 7500, '2080/81', 'Paid'],
+            ['COMP002', 'CL002', 2500, 125000, 18750, '2080/81', 'Pending'],
         ]
         
         for row_idx, row_data in enumerate(sample_data, start=1):

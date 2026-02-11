@@ -264,21 +264,22 @@ class Command(BaseCommand):
             companies[company.company_code] = company
 
         client_blueprints = [
-            {'client_code': 'DP0001', 'full_name': 'Dipesh Pradhan', 'holder_type': 'Public', 'pan_or_citizenship': '303045601', 'bank_name': 'Rastriya Banijya Bank', 'bank_account_no': '01001000022334'},
-            {'client_code': 'KS0002', 'full_name': 'Khadka Securities Pvt. Ltd', 'holder_type': 'Institution', 'pan_or_citizenship': '500209901', 'bank_name': 'Nabil Bank Limited', 'bank_account_no': '00405010022222'},
-            {'client_code': 'SS0003', 'full_name': 'Saraswati Shrestha', 'holder_type': 'Promoter', 'pan_or_citizenship': '209988776', 'bank_name': 'Nepal Bank Limited', 'bank_account_no': '01001000055667'},
-            {'client_code': 'NR0004', 'full_name': 'National Retirement Fund', 'holder_type': 'Institution', 'pan_or_citizenship': '700123654', 'bank_name': 'Nepal Rastra Bank', 'bank_account_no': '22010010000099'},
-            {'client_code': 'MB0005', 'full_name': 'Mukti Bhandari', 'holder_type': 'Public', 'pan_or_citizenship': '105509933', 'bank_name': 'NIC Asia Bank', 'bank_account_no': '250101000456789'},
-            {'client_code': 'LP0006', 'full_name': 'Lumbini Pension Trust', 'holder_type': 'Institution', 'pan_or_citizenship': '808080123', 'bank_name': 'Nepal Investment Bank', 'bank_account_no': '190101000334455'},
-            {'client_code': 'SB0007', 'full_name': 'Samir Bista', 'holder_type': 'Public', 'pan_or_citizenship': '301010101', 'bank_name': 'Sunrise Bank Limited', 'bank_account_no': '03030300006789'},
-            {'client_code': 'HF0008', 'full_name': 'Himalayan Foundation', 'holder_type': 'Institution', 'pan_or_citizenship': '888777666', 'bank_name': 'Prabhu Bank Limited', 'bank_account_no': '05050500004567'},
-            {'client_code': 'BG0009', 'full_name': 'Bodhi Gurung', 'holder_type': 'Promoter', 'pan_or_citizenship': '207707707', 'bank_name': 'Standard Chartered Bank Nepal', 'bank_account_no': '06060600001234'},
+            {'client_code': 'DP0001', 'full_name': 'Dipesh Pradhan', 'boid': 'BOID-DP0001', 'holder_type': 'Public', 'pan_or_citizenship': '303045601', 'bank_name': 'Rastriya Banijya Bank', 'bank_account_no': '01001000022334'},
+            {'client_code': 'KS0002', 'full_name': 'Khadka Securities Pvt. Ltd', 'boid': 'BOID-KS0002', 'holder_type': 'Institution', 'pan_or_citizenship': '500209901', 'bank_name': 'Nabil Bank Limited', 'bank_account_no': '00405010022222'},
+            {'client_code': 'SS0003', 'full_name': 'Saraswati Shrestha', 'boid': 'BOID-SS0003', 'holder_type': 'Promoter', 'pan_or_citizenship': '209988776', 'bank_name': 'Nepal Bank Limited', 'bank_account_no': '01001000055667'},
+            {'client_code': 'NR0004', 'full_name': 'National Retirement Fund', 'boid': 'BOID-NR0004', 'holder_type': 'Institution', 'pan_or_citizenship': '700123654', 'bank_name': 'Nepal Rastra Bank', 'bank_account_no': '22010010000099'},
+            {'client_code': 'MB0005', 'full_name': 'Mukti Bhandari', 'boid': 'BOID-MB0005', 'holder_type': 'Public', 'pan_or_citizenship': '105509933', 'bank_name': 'NIC Asia Bank', 'bank_account_no': '250101000456789'},
+            {'client_code': 'LP0006', 'full_name': 'Lumbini Pension Trust', 'boid': 'BOID-LP0006', 'holder_type': 'Institution', 'pan_or_citizenship': '808080123', 'bank_name': 'Nepal Investment Bank', 'bank_account_no': '190101000334455'},
+            {'client_code': 'SB0007', 'full_name': 'Samir Bista', 'boid': 'BOID-SB0007', 'holder_type': 'Public', 'pan_or_citizenship': '301010101', 'bank_name': 'Sunrise Bank Limited', 'bank_account_no': '03030300006789'},
+            {'client_code': 'HF0008', 'full_name': 'Himalayan Foundation', 'boid': 'BOID-HF0008', 'holder_type': 'Institution', 'pan_or_citizenship': '888777666', 'bank_name': 'Prabhu Bank Limited', 'bank_account_no': '05050500004567'},
+            {'client_code': 'BG0009', 'full_name': 'Bodhi Gurung', 'boid': 'BOID-BG0009', 'holder_type': 'Promoter', 'pan_or_citizenship': '207707707', 'bank_name': 'Standard Chartered Bank Nepal', 'bank_account_no': '06060600001234'},
         ]
 
         clients = {}
         for blueprint in client_blueprints:
             client, _ = Client.objects.get_or_create(client_code=blueprint['client_code'])
             client.full_name = blueprint['full_name']
+            client.boid = blueprint.get('boid')
             client.holder_type = blueprint['holder_type']
             client.pan_or_citizenship = blueprint['pan_or_citizenship']
             client.bank_name = blueprint['bank_name']

@@ -35,12 +35,13 @@ class BankStatementViewSet(viewsets.ModelViewSet):
         
         try:
             # Create bank statement record
+            user = getattr(request, 'user_obj', None) or request.user
             bank_stmt = BankStatement.objects.create(
                 bank_name=serializer.validated_data['bank_name'],
                 account_no=serializer.validated_data['account_no'],
                 statement_from=serializer.validated_data['statement_from'],
                 statement_to=serializer.validated_data['statement_to'],
-                uploaded_by=request.user_obj,
+                uploaded_by=user,
                 file_name=file.name
             )
             
@@ -172,7 +173,8 @@ class ReconciliationViewSet(viewsets.ModelViewSet):
     required_permission = 'reconciliation'
     
     def perform_create(self, serializer):
-        serializer.save(reconciled_by=self.request.user_obj)
+        user = getattr(self.request, 'user_obj', None) or self.request.user
+        serializer.save(reconciled_by=user)
     
     @action(detail=False, methods=['post'])
     def auto_match(self, request):
@@ -210,13 +212,14 @@ class ReconciliationViewSet(viewsets.ModelViewSet):
             ).first()
             
             if interest_match:
+                user = getattr(request, 'user_obj', None) or request.user
                 Reconciliation.objects.create(
                     bank_txn=txn,
                     source_type='Interest',
                     source_id=interest_match.interest_id,
                     matched_amount=amount,
                     recon_status='Matched',
-                    reconciled_by=request.user_obj
+                    reconciled_by=user
                 )
                 matched += 1
                 continue
@@ -228,13 +231,14 @@ class ReconciliationViewSet(viewsets.ModelViewSet):
             ).first()
             
             if dividend_match:
+                user = getattr(request, 'user_obj', None) or request.user
                 Reconciliation.objects.create(
                     bank_txn=txn,
                     source_type='Dividend',
                     source_id=dividend_match.dividend_id,
                     matched_amount=amount,
                     recon_status='Matched',
-                    reconciled_by=request.user_obj
+                    reconciled_by=user
                 )
                 matched += 1
         

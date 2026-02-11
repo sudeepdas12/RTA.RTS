@@ -35,8 +35,15 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# Run migrations, collectstatic, then run the CMD
-python manage.py migrate --noinput
+# Run migrations, ensure admin user, collectstatic, then run the CMD
+# Since schema.sql is loaded at DB init, fake all migrations
+python manage.py migrate --noinput --fake
+
+python manage.py set_admin_password \
+  --username "${ADMIN_USERNAME:-admin}" \
+  --password "${ADMIN_PASSWORD:-admin123}" \
+  --email "${ADMIN_EMAIL:-admin@rta.gov.np}" \
+  --full-name "${ADMIN_FULL_NAME:-System Administrator}"
 python manage.py collectstatic --noinput
 
 exec "$@"

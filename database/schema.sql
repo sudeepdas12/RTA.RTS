@@ -58,6 +58,7 @@ CREATE TABLE clients (
     client_id SERIAL PRIMARY KEY,
     client_code VARCHAR(20) UNIQUE NOT NULL,
     full_name VARCHAR(200) NOT NULL,
+    boid VARCHAR(50) UNIQUE,
     holder_type VARCHAR(50) CHECK (holder_type IN ('Public','Promoter','Institution')),
     pan_or_citizenship VARCHAR(50),
     bank_account_no VARCHAR(50),
@@ -115,7 +116,7 @@ CREATE TABLE interest_payables (
     payment_status VARCHAR(20) CHECK (payment_status IN ('Pending','Paid','Partial')) DEFAULT 'Pending',
     payment_date DATE,
     payment_reference VARCHAR(100),
-    created_by INT REFERENCES users(user_id),
+    created_by_id INT REFERENCES users(user_id),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -138,7 +139,7 @@ CREATE TABLE dividend_payables (
     payment_date DATE,
     payment_reference VARCHAR(100),
     fiscal_year VARCHAR(20),
-    created_by INT REFERENCES users(user_id),
+    created_by_id INT REFERENCES users(user_id),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -159,7 +160,7 @@ CREATE TABLE bank_statements (
     account_no VARCHAR(50) NOT NULL,
     statement_from DATE NOT NULL,
     statement_to DATE NOT NULL,
-    uploaded_by INT REFERENCES users(user_id),
+    uploaded_by_id INT REFERENCES users(user_id),
     uploaded_at TIMESTAMP DEFAULT NOW(),
     file_name VARCHAR(255),
     total_debit NUMERIC(15,2) DEFAULT 0,
@@ -195,7 +196,7 @@ CREATE TABLE reconciliation (
     matched_amount NUMERIC(15,2) NOT NULL,
     recon_status VARCHAR(20) CHECK (recon_status IN ('Matched','Partial','Exception')) DEFAULT 'Matched',
     notes TEXT,
-    reconciled_by INT REFERENCES users(user_id),
+    reconciled_by_id INT REFERENCES users(user_id),
     reconciled_at TIMESTAMP DEFAULT NOW()
 );
 

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Badge } from 'react-bootstrap';
 import { FaSignOutAlt, FaHome, FaMoneyBill, FaChartBar, FaHistory, FaCog, FaChevronRight, FaBuilding, FaUsers, FaUpload, FaGavel, FaBell } from 'react-icons/fa';
 import { pendingService } from '../services/api';
 import './NavigationBar.css';
@@ -157,9 +156,6 @@ const NavigationBar = () => {
                 <div className="dropdown-header">
                   <small>Role: <strong>{user?.role || 'N/A'}</strong></small>
                 </div>
-                <Link to="/profile" className="dropdown-item" onClick={() => { setOpenDropdown(null); setMobileMenuOpen(false); }}>
-                  My Profile
-                </Link>
                 <button 
                   className="dropdown-item logout-btn"
                   onClick={() => { handleLogout(); setMobileMenuOpen(false); }}

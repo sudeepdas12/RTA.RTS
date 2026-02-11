@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Alert, Button, Table, Form, Modal, ButtonGroup } from 'react-bootstrap';
+import { Container, Row, Col, Card, Alert, Button, Table, Modal } from 'react-bootstrap';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 import { FaDollarSign, FaFileInvoice, FaCheckCircle, FaClock, FaChartLine, FaChartBar } from 'react-icons/fa';
@@ -18,8 +18,6 @@ const DividendDashboard = () => {
   const [error, setError] = useState(null);
   const [companyBreakdown, setCompanyBreakdown] = useState([]);
   const [allCompanies, setAllCompanies] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [topNFilter, setTopNFilter] = useState('all');
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [companyDetails, setCompanyDetails] = useState([]);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -82,19 +80,6 @@ const DividendDashboard = () => {
     fetchData(range);
   }, [range]);
 
-  useEffect(() => {
-    let filtered = allCompanies.filter(company =>
-      company.company.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    if (topNFilter === '5') {
-      filtered = filtered.slice(0, 5);
-    } else if (topNFilter === '10') {
-      filtered = filtered.slice(0, 10);
-    }
-
-    setCompanyBreakdown(filtered);
-  }, [searchTerm, topNFilter, allCompanies]);
 
   const handleCompanyClick = (companyName) => {
     const details = allDividendData.filter(item => item.company_name === companyName);

@@ -588,8 +588,8 @@ input::-ms-reveal {
 
 select:focus option:checked,
 select:focus option[selected] {
-  background: linear-gradient(135deg, #8860D0, #9d7de3) !important;
-  background-color: #8860D0 !important;
+  background: linear-gradient(135deg, #ffd6ea, #ffc1e0) !important;
+  background-color: #ffd6ea !important;
 }
 
 /* Override browser defaults for select dropdown */
@@ -840,6 +840,8 @@ select[multiple] option:hover {
 }
 
 .modern-dropdown-item.active {
+  background: linear-gradient(135deg, #ffd6ea 0%, #ffc1e0 100%) !important;
+  color: #1e293b !important;
   box-shadow: 0 4px 12px rgba(136, 96, 208, 0.3);
 }
 

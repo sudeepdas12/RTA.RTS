@@ -16,9 +16,14 @@ const DividendTaxExempted = () => {
 
   const fetchCompanies = async () => {
     try {
-      const response = await companyService.getAll({ sector_type: 'Tax Exempted' });
+      const response = await companyService.getAll({ page_size: 1000 });
       const companies = normalizeList(response.data);
-      setTaxExemptedCompanies(companies.map(c => c.company_id ?? c.id));
+      const taxExempted = companies.filter((c) => {
+        const sector = String(c.sector_type || '').toLowerCase();
+        const taxStatus = String(c.interest_tax_status || '').toLowerCase();
+        return taxStatus === 'exempted' || sector.includes('exempt');
+      });
+      setTaxExemptedCompanies(taxExempted.map(c => c.company_id ?? c.id));
     } catch (err) {
       console.error('Failed to fetch tax exempted companies', err);
     }
@@ -54,6 +59,8 @@ const DividendTaxExempted = () => {
   useEffect(() => {
     if (taxExemptedCompanies.length > 0) {
       fetchData(range);
+    } else if (taxExemptedCompanies.length === 0) {
+      setData([]);
     }
   }, [range, taxExemptedCompanies, fetchData]);
 

@@ -14,14 +14,8 @@ echo Press any key to continue or Ctrl+C to cancel...
 pause
 
 echo.
-echo Starting Backend Server...
-start cmd /k "cd backend && start_backend.bat"
-
-timeout /t 5
-
-echo.
-echo Starting Frontend Server...
-start cmd /k "cd frontend && start_frontend.bat"
+echo Starting project using smart starter (prefers Docker Compose when available)...
+call "%~dp0start_project.bat"
 
 echo.
 echo ========================================

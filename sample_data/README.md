@@ -9,8 +9,8 @@ This folder contains curated CSV files that mirror the records provisioned by `p
 | companies_sample.csv | Master company register for telecom, hydropower, banking issuers. | company_code, company_name, sector_type, interest_tax_status, pan_no, bank_name, bank_account_no |
 | clients_sample.csv | Holder roster covering public, promoter, and institutional investors. | client_code, full_name, holder_type, pan_or_citizenship, bank_name, bank_account_no |
 | fiscal_year_settings_sample.csv | Company-specific interest & tax rates per fiscal year for calculation. | Company Name, Fiscal Year, Interest Rate %, Tax Rate % |
-| interest_payables_sample.csv | Debenture/loan interest accruals with varied statuses. | company_code, client_code, instrument_ref, gross_interest, tax_amount, due_date, payment_status |
-| dividend_payables_sample.csv | Stock dividend declarations across fiscal years 2080/81–2081/82. | company_code, client_code, shares_held, gross_dividend, tax_amount, fiscal_year, payment_status |
+| interest_payables_sample.csv | Debenture/loan interest accruals with varied statuses. | company_code, client_code, instrument_ref, gross_interest, tax_amount, due_date (optional payment_status) |
+| dividend_payables_sample.csv | Stock dividend declarations across fiscal years 2080/81–2081/82. | company_code, client_code, shares_held, gross_dividend, tax_amount (optional fiscal_year, payment_status) |
 | bank_statement_sample.csv | Nepal Bank transaction extract for reconciliation tests. | txn_date, reference_no, description, debit, credit, balance |
 
 ## How to Use

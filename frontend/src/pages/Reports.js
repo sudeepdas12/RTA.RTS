@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import NavigationBar from '../components/NavigationBar';
 import { reportService } from '../services/api';
 import { buildDateParams, formatCurrency } from '../utils/reportUtils';
+import '../styles/dashboard.css';
 
 const Reports = () => {
   const [reportType, setReportType] = useState('interest');
@@ -137,7 +138,7 @@ const Reports = () => {
                             marginBottom: '4px',
                             fontWeight: reportType === 'interest' ? '600' : '500',
                             transition: 'all 0.2s ease',
-                            background: reportType === 'interest' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
+                            background: reportType === 'interest' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
                             color: reportType === 'interest' ? '#ffffff' : '#374151'
                           }}
                         >
@@ -153,7 +154,7 @@ const Reports = () => {
                             marginBottom: '4px',
                             fontWeight: reportType === 'dividend' ? '600' : '500',
                             transition: 'all 0.2s ease',
-                            background: reportType === 'dividend' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
+                            background: reportType === 'dividend' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
                             color: reportType === 'dividend' ? '#ffffff' : '#374151'
                           }}
                         >
@@ -247,7 +248,7 @@ const Reports = () => {
                             marginBottom: '4px',
                             fontWeight: recoType === 'interest' ? '600' : '500',
                             transition: 'all 0.2s ease',
-                            background: recoType === 'interest' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
+                            background: recoType === 'interest' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
                             color: recoType === 'interest' ? '#ffffff' : '#374151'
                           }}
                         >
@@ -263,8 +264,9 @@ const Reports = () => {
                             marginBottom: '4px',
                             fontWeight: recoType === 'dividend' ? '600' : '500',
                             transition: 'all 0.2s ease',
-                            background: recoType === 'dividend' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
+                            background: recoType === 'dividend' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
                             color: recoType === 'dividend' ? '#ffffff' : '#374151'
+                            
                           }}
                         >
                           Stock Dividend

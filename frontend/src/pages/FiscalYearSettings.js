@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Card, Table, Button, Modal, Form, Alert, Badge } from 'react-bootstrap';
 import NavigationBar from '../components/NavigationBar';
-import { settingsService } from '../services/api';
+import { settingsService, companyService } from '../services/api';
+import CustomSelect from '../components/CustomSelect';
 import '../styles/dashboard.css';
 
 const FiscalYearSettings = () => {
   const [fiscalYears, setFiscalYears] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [companyLoading, setCompanyLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({
+    company: '',
     fiscal_year: '',
     interest_rate: 7.0,
     tax_rate: 0.0,
@@ -31,14 +35,28 @@ const FiscalYearSettings = () => {
     }
   };
 
+  const fetchCompanies = async () => {
+    setCompanyLoading(true);
+    try {
+      const response = await companyService.getAll({ page_size: 1000 });
+      setCompanies(response.data.results || response.data || []);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to fetch company list');
+    } finally {
+      setCompanyLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchFiscalYears();
+    fetchCompanies();
   }, []);
 
   const handleShowModal = (item = null) => {
     if (item) {
       setEditingItem(item);
       setFormData({
+        company: item.company,
         fiscal_year: item.fiscal_year,
         interest_rate: item.interest_rate,
         tax_rate: item.tax_rate,
@@ -47,6 +65,7 @@ const FiscalYearSettings = () => {
     } else {
       setEditingItem(null);
       setFormData({
+        company: '',
         fiscal_year: '',
         interest_rate: 7.0,
         tax_rate: 0.0,
@@ -134,25 +153,27 @@ const FiscalYearSettings = () => {
                 <div className="table-responsive">
                   <Table className="table-modern mb-0">
                     <thead>
-                  <tr>
-                    <th>Fiscal Year</th>
-                    <th>Interest Rate (%)</th>
-                    <th>Tax Rate (%)</th>
-                    <th>Status</th>
-                    <th>Updated At</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
+                      <tr>
+                        <th>Company</th>
+                        <th>Fiscal Year</th>
+                        <th>Interest Rate (%)</th>
+                        <th>Tax Rate (%)</th>
+                        <th>Status</th>
+                        <th>Updated At</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
                 <tbody>
                   {fiscalYears.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="text-center text-muted">
+                          <td colSpan="7" className="text-center text-muted">
                         No fiscal year settings found
                       </td>
                     </tr>
                   ) : (
                     fiscalYears.map((item) => (
                       <tr key={item.id}>
+                            <td>{item.company_name || item.company_detail?.company_name || '—'}</td>
                         <td>{item.fiscal_year}</td>
                         <td>{item.interest_rate}%</td>
                         <td>{item.tax_rate}%</td>
@@ -211,6 +232,18 @@ const FiscalYearSettings = () => {
           <Form onSubmit={handleSubmit}>
             <Modal.Body>
               <Form.Group className="mb-3">
+                <Form.Label>Company *</Form.Label>
+                <CustomSelect
+                  isDisabled={companyLoading || !!editingItem}
+                  options={companies.map((c) => ({ value: c.company_id, label: c.company_name }))}
+                  value={formData.company}
+                  onChange={(val) => setFormData({ ...formData, company: val })}
+                  placeholder={companyLoading ? 'Loading companies...' : 'Select Company'}
+                  isSearchable
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
                 <Form.Label>Fiscal Year *</Form.Label>
                 <Form.Control
                   type="text"
@@ -218,6 +251,7 @@ const FiscalYearSettings = () => {
                   value={formData.fiscal_year}
                   onChange={(e) => setFormData({ ...formData, fiscal_year: e.target.value })}
                   required
+                  disabled={!!editingItem}
                 />
               </Form.Group>
 

@@ -5,10 +5,11 @@ import { toast } from 'react-toastify';
 import NavigationBar from '../components/NavigationBar';
 import api, { settingsService, companyService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import CustomSelect from '../components/CustomSelect';
 import '../styles/dashboard.css';
 
 const Uploads = () => {
-  const { hasPermission } = useAuth();
+  const { hasPermission, user } = useAuth();
   const [activeTab, setActiveTab] = useState('companies');
   const [uploading, setUploading] = useState({
     companies: false,
@@ -17,6 +18,14 @@ const Uploads = () => {
     interest: false,
     dividend: false,
     fiscalYears: false,
+  });
+  const [uploadFiles, setUploadFiles] = useState({
+    companies: null,
+    clients: null,
+    reconciliation: null,
+    interest: null,
+    dividend: null,
+    fiscalYears: null,
   });
   const [saving, setSaving] = useState({
     companies: false,
@@ -63,11 +72,17 @@ const Uploads = () => {
     tax_rate: '0.00',
     is_active: false,
   });
+  const [reconForm, setReconForm] = useState({
+    bank_name: '',
+    account_no: '',
+    statement_from: '',
+    statement_to: '',
+  });
 
   const canCreateCompanies = hasPermission('companies', 'create');
   const canCreateClients = hasPermission('clients', 'create');
   const canCreateUsers = hasPermission('users', 'create');
-    const canManageSettings = hasPermission('users', 'read');
+  const canManageSettings = hasPermission('settings', 'manage') || user?.role === 'Admin';
   const canCreateInterest = hasPermission('interest_payables', 'create');
   const canCreateDividend = hasPermission('dividend_payables', 'create');
   const canCreateReconciliation = hasPermission('reconciliation', 'create');
@@ -91,18 +106,18 @@ const Uploads = () => {
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
-        const response = await companyService.getAllCompanies();
+        const response = await companyService.getAll({ page_size: 1000 });
         setCompanies(response.data.results || response.data || []);
       } catch (error) {
         console.error('Failed to fetch companies:', error);
       }
     };
 
-    if (canManageSettings) {
+    if (user) {
       fetchCompanies();
       loadFiscalYears();
     }
-  }, [canManageSettings]);
+  }, [user]);
 
   const loadFiscalYears = async () => {
     try {
@@ -128,6 +143,7 @@ const Uploads = () => {
       console.error('Upload failed:', error);
     } finally {
       setUploading((prev) => ({ ...prev, fiscalYears: false }));
+      setUploadFiles((prev) => ({ ...prev, fiscalYears: null }));
     }
   };
 
@@ -225,6 +241,36 @@ const Uploads = () => {
       console.error('Upload failed:', error);
     } finally {
       setUploading((prev) => ({ ...prev, [type]: false }));
+      setUploadFiles((prev) => ({ ...prev, [type]: null }));
+    }
+  };
+
+  const handleReconciliationUpload = async () => {
+    if (!uploadFiles.reconciliation) return;
+    if (!reconForm.bank_name || !reconForm.account_no || !reconForm.statement_from || !reconForm.statement_to) {
+      toast.error('Bank name, account no, and statement date range are required');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', uploadFiles.reconciliation);
+    formData.append('bank_name', reconForm.bank_name);
+    formData.append('account_no', reconForm.account_no);
+    formData.append('statement_from', reconForm.statement_from);
+    formData.append('statement_to', reconForm.statement_to);
+
+    try {
+      setUploading((prev) => ({ ...prev, reconciliation: true }));
+      await api.post('/reconciliation/bank-statements/upload/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success('Bank statement uploaded successfully');
+    } catch (error) {
+      toast.error('Upload failed');
+      console.error('Upload failed:', error);
+    } finally {
+      setUploading((prev) => ({ ...prev, reconciliation: false }));
+      setUploadFiles((prev) => ({ ...prev, reconciliation: null }));
     }
   };
 
@@ -369,37 +415,34 @@ const Uploads = () => {
                         <Col md={4}>
                           <Form.Group>
                             <Form.Label>Sector</Form.Label>
-                            <Form.Select
+                            <CustomSelect
+                              options={[{ value: 'Public', label: 'Public' }, { value: 'Private', label: 'Private' }]}
                               value={companyForm.sector_type}
-                              onChange={(e) => setCompanyForm({ ...companyForm, sector_type: e.target.value })}
-                            >
-                              <option value="Public">Public</option>
-                              <option value="Private">Private</option>
-                            </Form.Select>
+                              onChange={(val) => setCompanyForm({ ...companyForm, sector_type: val })}
+                              placeholder="Select Sector"
+                            />
                           </Form.Group>
                         </Col>
                         <Col md={4}>
                           <Form.Group>
                             <Form.Label>Tax Status</Form.Label>
-                            <Form.Select
+                            <CustomSelect
+                              options={[{ value: 'Taxable', label: 'Taxable' }, { value: 'Exempted', label: 'Exempted' }]}
                               value={companyForm.interest_tax_status}
-                              onChange={(e) => setCompanyForm({ ...companyForm, interest_tax_status: e.target.value })}
-                            >
-                              <option value="Taxable">Taxable</option>
-                              <option value="Exempted">Exempted</option>
-                            </Form.Select>
+                              onChange={(val) => setCompanyForm({ ...companyForm, interest_tax_status: val })}
+                              placeholder="Select Tax Status"
+                            />
                           </Form.Group>
                         </Col>
                         <Col md={4}>
                           <Form.Group>
                             <Form.Label>Status</Form.Label>
-                            <Form.Select
+                            <CustomSelect
+                              options={[{ value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' }]}
                               value={companyForm.status}
-                              onChange={(e) => setCompanyForm({ ...companyForm, status: e.target.value })}
-                            >
-                              <option value="Active">Active</option>
-                              <option value="Inactive">Inactive</option>
-                            </Form.Select>
+                              onChange={(val) => setCompanyForm({ ...companyForm, status: val })}
+                              placeholder="Select Status"
+                            />
                           </Form.Group>
                         </Col>
                         <Col md={6}>
@@ -450,12 +493,19 @@ const Uploads = () => {
                         <Form.Control
                           type="file"
                           accept=".xlsx,.csv"
-                          onChange={(e) => handleUpload('companies', '/companies/upload/', e.target.files[0])}
+                          onChange={(e) => setUploadFiles((prev) => ({ ...prev, companies: e.target.files[0] || null }))}
                           disabled={uploading.companies}
                         />
+                        {uploadFiles.companies?.name && (
+                          <Form.Text className="text-muted">Selected: {uploadFiles.companies.name}</Form.Text>
+                        )}
                       </Form.Group>
                       <div className="d-flex gap-2">
-                        <Button variant="primary" disabled={uploading.companies}>
+                        <Button
+                          variant="primary"
+                          disabled={uploading.companies || !uploadFiles.companies}
+                          onClick={() => handleUpload('companies', '/companies/upload/', uploadFiles.companies)}
+                        >
                           {uploading.companies ? <div className="loading-spinner-modern loading-spinner-md"></div> : <FaUpload />} Upload
                         </Button>
                         <Button
@@ -501,26 +551,23 @@ const Uploads = () => {
                         <Col md={4}>
                           <Form.Group>
                             <Form.Label>Holder Type</Form.Label>
-                            <Form.Select
+                            <CustomSelect
+                              options={[{ value: 'Public', label: 'Public' }, { value: 'Promoter', label: 'Promoter' }, { value: 'Institution', label: 'Institution' }]}
                               value={clientForm.holder_type}
-                              onChange={(e) => setClientForm({ ...clientForm, holder_type: e.target.value })}
-                            >
-                              <option value="Public">Public</option>
-                              <option value="Promoter">Promoter</option>
-                              <option value="Institution">Institution</option>
-                            </Form.Select>
+                              onChange={(val) => setClientForm({ ...clientForm, holder_type: val })}
+                              placeholder="Select Holder Type"
+                            />
                           </Form.Group>
                         </Col>
                         <Col md={4}>
                           <Form.Group>
                             <Form.Label>Status</Form.Label>
-                            <Form.Select
+                            <CustomSelect
+                              options={[{ value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' }]}
                               value={clientForm.status}
-                              onChange={(e) => setClientForm({ ...clientForm, status: e.target.value })}
-                            >
-                              <option value="Active">Active</option>
-                              <option value="Inactive">Inactive</option>
-                            </Form.Select>
+                              onChange={(val) => setClientForm({ ...clientForm, status: val })}
+                              placeholder="Select Status"
+                            />
                           </Form.Group>
                         </Col>
                         <Col md={4}>
@@ -571,12 +618,19 @@ const Uploads = () => {
                         <Form.Control
                           type="file"
                           accept=".xlsx,.csv"
-                          onChange={(e) => handleUpload('clients', '/clients/upload/', e.target.files[0])}
+                          onChange={(e) => setUploadFiles((prev) => ({ ...prev, clients: e.target.files[0] || null }))}
                           disabled={uploading.clients}
                         />
+                        {uploadFiles.clients?.name && (
+                          <Form.Text className="text-muted">Selected: {uploadFiles.clients.name}</Form.Text>
+                        )}
                       </Form.Group>
                       <div className="d-flex gap-2">
-                        <Button variant="primary" disabled={uploading.clients}>
+                        <Button
+                          variant="primary"
+                          disabled={uploading.clients || !uploadFiles.clients}
+                          onClick={() => handleUpload('clients', '/clients/upload/', uploadFiles.clients)}
+                        >
                           {uploading.clients ? <div className="loading-spinner-modern loading-spinner-sm"></div> : <FaUpload />} Upload
                         </Button>
                         <Button
@@ -642,29 +696,23 @@ const Uploads = () => {
                         <Col md={6}>
                           <Form.Group>
                             <Form.Label>Role *</Form.Label>
-                            <Form.Select
+                            <CustomSelect
+                              options={roles.map((role) => ({ value: role.role_id, label: role.role_name }))}
                               value={userForm.role_id}
-                              onChange={(e) => setUserForm({ ...userForm, role_id: e.target.value })}
-                            >
-                              <option value="">Select role</option>
-                              {roles.map((role) => (
-                                <option key={role.role_id} value={role.role_id}>
-                                  {role.role_name}
-                                </option>
-                              ))}
-                            </Form.Select>
+                              onChange={(val) => setUserForm({ ...userForm, role_id: val })}
+                              placeholder="Select role"
+                            />
                           </Form.Group>
                         </Col>
                         <Col md={6}>
                           <Form.Group>
                             <Form.Label>Status</Form.Label>
-                            <Form.Select
+                            <CustomSelect
+                              options={[{ value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' }]}
                               value={userForm.status}
-                              onChange={(e) => setUserForm({ ...userForm, status: e.target.value })}
-                            >
-                              <option value="Active">Active</option>
-                              <option value="Inactive">Inactive</option>
-                            </Form.Select>
+                              onChange={(val) => setUserForm({ ...userForm, status: val })}
+                              placeholder="Select Status"
+                            />
                           </Form.Group>
                         </Col>
                       </Row>
@@ -697,15 +745,22 @@ const Uploads = () => {
                         <Form.Control
                           type="file"
                           accept=".xlsx,.csv"
-                          onChange={(e) => handleUpload('interest', '/payables/interest/upload/', e.target.files[0])}
+                          onChange={(e) => setUploadFiles((prev) => ({ ...prev, interest: e.target.files[0] || null }))}
                           disabled={uploading.interest}
                         />
+                        {uploadFiles.interest?.name && (
+                          <Form.Text className="text-muted">Selected: {uploadFiles.interest.name}</Form.Text>
+                        )}
                         <Form.Text className="text-muted">
-                          Required columns: company_code, client_code, gross_interest, tax_amount, due_date
+                          Required columns: company_code, client_code, gross_interest, tax_amount, due_date. Optional: payment_status
                         </Form.Text>
                       </Form.Group>
                       <div className="d-flex gap-2">
-                        <Button variant="primary" disabled={uploading.interest}>
+                        <Button
+                          variant="primary"
+                          disabled={uploading.interest || !uploadFiles.interest}
+                          onClick={() => handleUpload('interest', '/payables/interest/upload/', uploadFiles.interest)}
+                        >
                           {uploading.interest ? <div className="loading-spinner-modern loading-spinner-sm"></div> : <FaUpload />} Upload
                         </Button>
                         <Button
@@ -730,15 +785,22 @@ const Uploads = () => {
                         <Form.Control
                           type="file"
                           accept=".xlsx,.csv"
-                          onChange={(e) => handleUpload('dividend', '/payables/dividend/upload/', e.target.files[0])}
+                          onChange={(e) => setUploadFiles((prev) => ({ ...prev, dividend: e.target.files[0] || null }))}
                           disabled={uploading.dividend}
                         />
+                        {uploadFiles.dividend?.name && (
+                          <Form.Text className="text-muted">Selected: {uploadFiles.dividend.name}</Form.Text>
+                        )}
                         <Form.Text className="text-muted">
-                          Required columns: company_code, client_code, shares_held, gross_dividend, tax_amount
+                          Required columns: company_code, client_code, shares_held, gross_dividend, tax_amount. Optional: fiscal_year, payment_status
                         </Form.Text>
                       </Form.Group>
                       <div className="d-flex gap-2">
-                        <Button variant="primary" disabled={uploading.dividend}>
+                        <Button
+                          variant="primary"
+                          disabled={uploading.dividend || !uploadFiles.dividend}
+                          onClick={() => handleUpload('dividend', '/payables/dividend/upload/', uploadFiles.dividend)}
+                        >
                           {uploading.dividend ? <div className="loading-spinner-modern loading-spinner-sm"></div> : <FaUpload />} Upload
                         </Button>
                         <Button
@@ -767,15 +829,61 @@ const Uploads = () => {
                         <Form.Control
                           type="file"
                           accept=".xlsx,.csv"
-                          onChange={(e) => handleUpload('reconciliation', '/reconciliation/bank-statements/upload/', e.target.files[0])}
+                          onChange={(e) => setUploadFiles((prev) => ({ ...prev, reconciliation: e.target.files[0] || null }))}
                           disabled={uploading.reconciliation}
                         />
+                        {uploadFiles.reconciliation?.name && (
+                          <Form.Text className="text-muted">Selected: {uploadFiles.reconciliation.name}</Form.Text>
+                        )}
                         <Form.Text className="text-muted">
                           Required columns: txn_date, reference_no, description, debit, credit, balance
                         </Form.Text>
                       </Form.Group>
+                      <Row className="g-2 mb-3">
+                        <Col md={6}>
+                          <Form.Label>Bank Name</Form.Label>
+                          <Form.Control
+                            value={reconForm.bank_name}
+                            onChange={(e) => setReconForm({ ...reconForm, bank_name: e.target.value })}
+                          />
+                        </Col>
+                        <Col md={6}>
+                          <Form.Label>Account No</Form.Label>
+                          <Form.Control
+                            value={reconForm.account_no}
+                            onChange={(e) => setReconForm({ ...reconForm, account_no: e.target.value })}
+                          />
+                        </Col>
+                        <Col md={6}>
+                          <Form.Label>Statement From</Form.Label>
+                          <Form.Control
+                            type="date"
+                            value={reconForm.statement_from}
+                            onChange={(e) => setReconForm({ ...reconForm, statement_from: e.target.value })}
+                          />
+                        </Col>
+                        <Col md={6}>
+                          <Form.Label>Statement To</Form.Label>
+                          <Form.Control
+                            type="date"
+                            value={reconForm.statement_to}
+                            onChange={(e) => setReconForm({ ...reconForm, statement_to: e.target.value })}
+                          />
+                        </Col>
+                      </Row>
                       <div className="d-flex gap-2">
-                        <Button variant="primary" disabled={uploading.reconciliation}>
+                        <Button
+                          variant="primary"
+                          disabled={
+                            uploading.reconciliation ||
+                            !uploadFiles.reconciliation ||
+                            !reconForm.bank_name ||
+                            !reconForm.account_no ||
+                            !reconForm.statement_from ||
+                            !reconForm.statement_to
+                          }
+                          onClick={handleReconciliationUpload}
+                        >
                           {uploading.reconciliation ? <div className="loading-spinner-modern loading-spinner-sm"></div> : <FaUpload />} Upload
                         </Button>
                         <Button
@@ -805,15 +913,22 @@ const Uploads = () => {
                           <Form.Control
                             type="file"
                             accept=".csv"
-                            onChange={(e) => handleFiscalUpload(e.target.files[0])}
+                            onChange={(e) => setUploadFiles((prev) => ({ ...prev, fiscalYears: e.target.files[0] || null }))}
                             disabled={uploading.fiscalYears}
                           />
+                          {uploadFiles.fiscalYears?.name && (
+                            <Form.Text className="text-muted">Selected: {uploadFiles.fiscalYears.name}</Form.Text>
+                          )}
                           <Form.Text className="text-muted">
                             Required columns: Company Name, Fiscal Year, Interest Rate %, Tax Rate %
                           </Form.Text>
                         </Form.Group>
                         <div className="d-flex gap-2">
-                          <Button variant="primary" disabled={uploading.fiscalYears}>
+                          <Button
+                            variant="primary"
+                            disabled={uploading.fiscalYears || !uploadFiles.fiscalYears}
+                            onClick={() => handleFiscalUpload(uploadFiles.fiscalYears)}
+                          >
                             {uploading.fiscalYears ? <div className="loading-spinner-modern loading-spinner-sm"></div> : <FaUpload />} Upload
                           </Button>
                           <Button variant="outline-secondary" onClick={downloadFiscalTemplate}>
@@ -896,18 +1011,14 @@ const Uploads = () => {
             <Form>
               <Form.Group className="mb-3">
                 <Form.Label>Company *</Form.Label>
-                <Form.Select
+                <CustomSelect
+                  isDisabled={editingFiscal}
+                  options={companies.map((c) => ({ value: c.company_id, label: c.company_name }))}
                   value={fiscalForm.company}
-                  onChange={(e) => setFiscalForm({ ...fiscalForm, company: e.target.value })}
-                  disabled={editingFiscal}
-                >
-                  <option value="">Select Company</option>
-                  {companies.map((company) => (
-                    <option key={company.company_id} value={company.company_id}>
-                      {company.company_name}
-                    </option>
-                  ))}
-                </Form.Select>
+                  onChange={(val) => setFiscalForm({ ...fiscalForm, company: val })}
+                  placeholder={'Select Company'}
+                  isSearchable
+                />
               </Form.Group>
               <Form.Group className="mb-3">
                 <Form.Label>Fiscal Year * (e.g., 2080-81)</Form.Label>

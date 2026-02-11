@@ -6,6 +6,7 @@ import NavigationBar from '../components/NavigationBar';
 import api from '../services/api';
 import { pendingService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import CustomSelect from '../components/CustomSelect';
 import '../styles/dashboard.css';
 
 const Users = () => {
@@ -379,15 +380,12 @@ const Users = () => {
                   <Form.Group className="mb-3">
                     <Form.Label>Role *</Form.Label>
                     {hasPermission('users', 'update') ? (
-                      <Form.Select
+                      <CustomSelect
+                        options={roles.map(role => ({ value: role.role_id, label: role.role_name }))}
                         value={currentUser.role_id}
-                        onChange={(e) => setCurrentUser({ ...currentUser, role_id: e.target.value })}
-                      >
-                        <option value="">Select Role</option>
-                        {roles.map(role => (
-                          <option key={role.role_id} value={role.role_id}>{role.role_name}</option>
-                        ))}
-                      </Form.Select>
+                        onChange={(val) => setCurrentUser({ ...currentUser, role_id: val })}
+                        placeholder="Select Role"
+                      />
                     ) : (
                       <Form.Control type="text" readOnly value={roles.find(r => r.role_id === currentUser.role_id)?.role_name || currentUser.role_id || 'N/A'} />
                     )}
@@ -396,13 +394,12 @@ const Users = () => {
                 <Col md={6}>
                   <Form.Group className="mb-3">
                     <Form.Label>Status *</Form.Label>
-                    <Form.Select
+                    <CustomSelect
+                      options={[{ value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' }]}
                       value={currentUser.status}
-                      onChange={(e) => setCurrentUser({ ...currentUser, status: e.target.value })}
-                    >
-                      <option value="Active">Active</option>
-                      <option value="Inactive">Inactive</option>
-                    </Form.Select>
+                      onChange={(val) => setCurrentUser({ ...currentUser, status: val })}
+                      placeholder="Select Status"
+                    />
                   </Form.Group>
                 </Col>
               </Row>

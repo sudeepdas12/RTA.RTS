@@ -26,6 +26,7 @@ class Command(BaseCommand):
 
         user.set_password(password)
         user.role = admin_role
+        user.status = 'Active'
         user.save()
 
         if created:

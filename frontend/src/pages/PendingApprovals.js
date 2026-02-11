@@ -3,13 +3,12 @@ import { Container, Row, Col, Card, Table, Button, Modal, Form, Badge } from 're
 import { FaGavel, FaCheck, FaTimes } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import NavigationBar from '../components/NavigationBar';
-import api, { pendingService } from '../services/api';
+import { pendingService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import '../styles/dashboard.css';
 
 const PendingApprovals = () => {
   const [pending, setPending] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectTarget, setRejectTarget] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -21,7 +20,6 @@ const PendingApprovals = () => {
   }, []);
 
   const fetchPending = async () => {
-    setLoading(true);
     try {
       const response = await pendingService.getAll({ status: 'PENDING' });
       setPending(Array.isArray(response.data) ? response.data : response.data.results || []);
@@ -29,8 +27,6 @@ const PendingApprovals = () => {
       console.error('Failed to fetch pending changes', error);
       toast.error('Failed to fetch pending changes');
       setPending([]);
-    } finally {
-      setLoading(false);
     }
   };
 

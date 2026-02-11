@@ -49,11 +49,7 @@ echo Waiting 8 seconds for servers to initialize...
 timeout /t 8 /nobreak >nul
 
 echo Step 5: Testing HTTP connectivity...
-if exist test_connection.bat (
-  call test_connection.bat
-) else (
-  echo test_connection.bat not found. Please run tests manually.
-)
+REM Test scripts have been removed as part of repo cleanup. If you need automated connectivity checks, re-add test scripts or run manual checks (curl/Invoke-WebRequest).
 
 echo All done. If the web UI did not open, check the backend and frontend console windows for errors.
 pause

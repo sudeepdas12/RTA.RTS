@@ -4,6 +4,7 @@ import { FaEdit, FaTrash, FaDownload, FaBuilding, FaChevronRight } from 'react-i
 import { toast } from 'react-toastify';
 import NavigationBar from '../components/NavigationBar';
 import api from '../services/api';
+import CustomSelect from '../components/CustomSelect';
 import '../styles/dashboard.css';
 
 const Companies = () => {
@@ -213,9 +214,9 @@ const Companies = () => {
                     active={filterSector === 'All'}
                     className="modern-dropdown-item"
                     style={{
-                      backgroundColor: filterSector === 'All' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
-                      background: filterSector === 'All' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
-                      color: filterSector === 'All' ? '#ffffff' : '#1e293b',
+                      backgroundColor: filterSector === 'All' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
+                      background: filterSector === 'All' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
+                      color: '#1e293b',
                       fontWeight: filterSector === 'All' ? '700' : '500',
                       padding: '12px 16px',
                       borderRadius: '8px',
@@ -231,9 +232,9 @@ const Companies = () => {
                     active={filterSector === 'Private'}
                     className="modern-dropdown-item"
                     style={{
-                      backgroundColor: filterSector === 'Private' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
-                      background: filterSector === 'Private' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
-                      color: filterSector === 'Private' ? '#ffffff' : '#1e293b',
+                      backgroundColor: filterSector === 'Private' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
+                      background: filterSector === 'Private' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
+                      color: '#1e293b',
                       fontWeight: filterSector === 'Private' ? '700' : '500',
                       padding: '12px 16px',
                       borderRadius: '8px',
@@ -249,9 +250,9 @@ const Companies = () => {
                     active={filterSector === 'Tax-Exempted'}
                     className="modern-dropdown-item"
                     style={{
-                      backgroundColor: filterSector === 'Tax-Exempted' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
-                      background: filterSector === 'Tax-Exempted' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
-                      color: filterSector === 'Tax-Exempted' ? '#ffffff' : '#1e293b',
+                      backgroundColor: filterSector === 'Tax-Exempted' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
+                      background: filterSector === 'Tax-Exempted' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
+                      color: '#1e293b',
                       fontWeight: filterSector === 'Tax-Exempted' ? '700' : '500',
                       padding: '12px 16px',
                       borderRadius: '8px',
@@ -267,9 +268,9 @@ const Companies = () => {
                     active={filterSector === 'Public'}
                     className="modern-dropdown-item"
                     style={{
-                      backgroundColor: filterSector === 'Public' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
-                      background: filterSector === 'Public' ? 'linear-gradient(135deg, #8860D0, #9d7de3)' : 'transparent',
-                      color: filterSector === 'Public' ? '#ffffff' : '#1e293b',
+                      backgroundColor: filterSector === 'Public' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
+                      background: filterSector === 'Public' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
+                      color: '#1e293b',
                       fontWeight: filterSector === 'Public' ? '700' : '500',
                       padding: '12px 16px',
                       borderRadius: '8px',
@@ -308,7 +309,7 @@ const Companies = () => {
               <tbody>
                 {filteredCompanies.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="text-center">No companies found</td>
+                    <td colSpan="6" className="text-center">No companies found</td>
                   </tr>
                 ) : (
                   filteredCompanies.map(company => (
@@ -357,14 +358,12 @@ const Companies = () => {
                 <Col md={6}>
                   <Form.Group className="mb-3">
                     <Form.Label>Sector Type *</Form.Label>
-                    <Form.Select
+                    <CustomSelect
+                      options={[{ value: 'Private', label: 'Private' }, { value: 'Tax-Exempted', label: 'Tax-Exempted' }, { value: 'Public', label: 'Public' }]}
                       value={currentCompany.sector_type}
-                      onChange={(e) => setCurrentCompany({ ...currentCompany, sector_type: e.target.value })}
-                    >
-                      <option value="Private">Private</option>
-                      <option value="Tax-Exempted">Tax-Exempted</option>
-                      <option value="Public">Public</option>
-                    </Form.Select>
+                      onChange={(val) => setCurrentCompany({ ...currentCompany, sector_type: val })}
+                      placeholder="Select Sector"
+                    />
                   </Form.Group>
                 </Col>
               </Row>
