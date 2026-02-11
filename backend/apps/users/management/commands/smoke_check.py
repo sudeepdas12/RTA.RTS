@@ -23,7 +23,7 @@ class Command(BaseCommand):
         for method, url in endpoints:
             if method == 'GET':
                 # Set HTTP_HOST to localhost to avoid DisallowedHost during tests
-                resp = client.get(url, HTTP_HOST='localhost')
+                resp = client.get(url, SERVER_NAME='localhost')
             else:
                 resp = None
 
