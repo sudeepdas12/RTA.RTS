@@ -16,14 +16,16 @@ class Command(BaseCommand):
 
         host = '127.0.0.1'
         port = 8000
+        # endpoints: (method, path, acceptable_status_codes)
         endpoints = [
-            ('GET', '/api/companies/'),
-            ('GET', '/api/clients/'),
-            ('GET', '/'),
+            ('GET', '/api/companies/', {200, 401, 403, 400}),
+            ('GET', '/api/clients/', {200, 401, 403, 400}),
+            # Root may intentionally return 404, or redirect to a UI (302)
+            ('GET', '/', {200, 302, 404, 400}),
         ]
 
         errors = []
-        for method, path in endpoints:
+        for method, path, accepted in endpoints:
             try:
                 with socket.create_connection((host, port), timeout=3) as s:
                     # send a minimal HTTP request with Host header
@@ -38,10 +40,8 @@ class Command(BaseCommand):
                 errors.append(f"{method} {path} -> ERROR: {str(e)}")
                 continue
 
-            # Accept 200, 302 (root redirect), 401/403 for protected endpoints.
-            # In some container environments a 400 (Bad Request due to Host) can be observed.
-            if status not in (200, 302, 401, 403, 400):
-                errors.append(f"{method} {path} -> {status}")
+            if status not in accepted:
+                errors.append(f"{method} {path} -> {status} (expected one of {sorted(accepted)})")
             else:
                 self.stdout.write(self.style.SUCCESS(f"OK: {method} {path} -> {status}"))
 
