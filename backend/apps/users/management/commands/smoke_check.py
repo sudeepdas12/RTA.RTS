@@ -12,7 +12,10 @@ class Command(BaseCommand):
         if 'testserver' not in getattr(settings, 'ALLOWED_HOSTS', []):
             settings.ALLOWED_HOSTS = list(getattr(settings, 'ALLOWED_HOSTS', [])) + ['testserver']
 
-        client = Client()
+        import urllib.request
+        import urllib.error
+
+        base = 'http://127.0.0.1:8000'
         endpoints = [
             ('GET', '/api/companies/'),
             ('GET', '/api/clients/'),
@@ -20,19 +23,23 @@ class Command(BaseCommand):
         ]
 
         errors = []
-        for method, url in endpoints:
-            if method == 'GET':
-                # Set HTTP_HOST to localhost to avoid DisallowedHost during tests
-                resp = client.get(url, SERVER_NAME='localhost')
-            else:
-                resp = None
+        for method, path in endpoints:
+            url = base + path
+            try:
+                req = urllib.request.Request(url, method=method)
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    status = resp.getcode()
+            except urllib.error.HTTPError as e:
+                status = e.code
+            except Exception as e:
+                errors.append(f"{method} {path} -> ERROR: {str(e)}")
+                continue
 
-            status = getattr(resp, 'status_code', None)
             # Accept 200, 302 (root redirect), 401/403 for protected endpoints
             if status not in (200, 302, 401, 403):
-                errors.append(f"{method} {url} -> {status}")
+                errors.append(f"{method} {path} -> {status}")
             else:
-                self.stdout.write(self.style.SUCCESS(f"OK: {method} {url} -> {status}"))
+                self.stdout.write(self.style.SUCCESS(f"OK: {method} {path} -> {status}"))
 
         if errors:
             self.stderr.write('Smoke check failed for endpoints:')
