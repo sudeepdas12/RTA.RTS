@@ -1,0 +1,58 @@
+.app-footer {
+  background: linear-gradient(135deg, #6b46c1 0%, #8860D0 50%, #9d7de3 100%);
+  color: #ffffff;
+  padding: 1.25rem 0;
+  text-align: center;
+  margin-top: auto;
+  box-shadow: 0 -4px 20px rgba(107, 70, 193, 0.3), 0 -2px 8px rgba(107, 70, 193, 0.2);
+  position: relative;
+  z-index: 1;
+  backdrop-filter: blur(10px);
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.footer-text {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  font-family: 'Georgia', 'Times New Roman', serif;
+  color: #ffffff;
+  white-space: nowrap;
+  display: inline-block;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.developer-name {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: #ffffff;
+  letter-spacing: 1px;
+  display: inline-block;
+  padding: 0 0.5rem;
+  text-shadow: 0 2px 12px rgba(255, 255, 255, 0.5), 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+@media (max-width: 768px) {
+  .app-footer {
+    padding: 0.75rem 0;
+  }
+  
+  .footer-text {
+    white-space: normal;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.3rem;
+  }
+  
+  .developer-name {
+    font-size: 1rem;
+    padding: 0 0.3rem;
+  }
+}

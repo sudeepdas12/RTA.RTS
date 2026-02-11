@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Navbar Test Harness</title>
+    <style>
+      :root { --nav-grad-start: rgba(136, 96, 208, 0.92); }
+      .modern-navbar { background: linear-gradient(135deg, var(--nav-grad-start), #fff); }
+      .navbar-top { display:flex; align-items:center; justify-content:space-between; padding:8px 24px; }
+      .navbar-brand { display:flex; align-items:center; gap:12px; order:0; margin-right:auto !important; margin-left:8px; }
+      .navbar-controls { display:flex; align-items:center; gap:12px; margin-left:auto; }
+      .user-menu { position: absolute; right: 0; top: 60px; z-index: 2000; display:block; }
+    </style>
+  </head>
+  <body>
+    <nav class="modern-navbar">
+      <div class="navbar-top">
+        <a class="navbar-brand" href="#">
+          <img class="navbar-logo" src="/images/RBB merchant banking logo final.jpg" alt="logo" style="height:40px;" />
+          <div class="brand-text"><span class="brand-main">RBBMBL</span></div>
+        </a>
+        <div class="navbar-controls">
+          <div class="nav-notifications">
+            <button class="nav-item notif-btn">🔔</button>
+          </div>
+          <div class="nav-user">
+            <button class="nav-item user-btn"> <span class="user-avatar">TU</span> <span class="user-name">Test User</span></button>
+            <div class="dropdown-menu user-menu">User Menu</div>
+          </div>
+        </div>
+      </div>
+    </nav>
+  </body>
+</html>

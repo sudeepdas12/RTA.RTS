@@ -1,28 +1,33 @@
 /* Modern Navbar Styling - Ultra Premium */
 :root {
   /* Color variables for consistency and easy theming */
-  --nav-grad-start: rgba(136, 96, 208, 0.92);
-  --nav-grad-mid: rgba(157, 125, 227, 0.9);
-  --nav-grad-end: rgba(185, 158, 245, 0.88);
-  --nav-grad-start-2: rgba(136, 96, 208, 0.82);
-  --nav-grad-mid-2: rgba(157, 125, 227, 0.78);
-  --nav-border: rgba(255, 255, 255, 0.25);
-  --nav-drop-shadow: 0 6px 22px rgba(107, 70, 193, 0.22);
-  --nav-inset-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  /* Soft solid palette (from your uploaded images) */
+  --nav-surface-primary: #7858c4; /* Top/logo area - deep violet */
+  --nav-surface-secondary: #a981ff; /* Bottom/menu area - soft lavender */
+  --nav-grad-start: #6b46c1;
+  --nav-grad-mid: #8a63e6;
+  --nav-grad-end: #d6b8ff;
+  --nav-border: rgba(255, 255, 255, 0.32);
+  --nav-drop-shadow: 0 16px 38px rgba(66, 28, 150, 0.28);
+  --nav-inset-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --nav-text-color: #ffffff;
 }
 
 .modern-navbar {
-  background: linear-gradient(135deg, var(--nav-grad-start) 0%, var(--nav-grad-mid) 50%, var(--nav-grad-end) 100%);
-  box-shadow: var(--nav-drop-shadow), var(--nav-inset-shadow);
+  /* Premium gradient shell for the navigation surface */
+  background: linear-gradient(135deg, var(--nav-grad-start), var(--nav-grad-mid), var(--nav-grad-end)) !important;
+  /* Fallback solid color */
+  background-color: var(--nav-surface-primary) !important;
+  color: #fff !important;
+  box-shadow: var(--nav-drop-shadow), var(--nav-inset-shadow) !important;
   position: sticky;
   top: 0;
   z-index: 1000;
   margin-bottom: 1rem;
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-bottom: 2px solid var(--nav-border);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid var(--nav-border) !important;
   overflow: visible !important;
-  /* Removed duplicate/contradictory declarations: position: relative; height: auto; animation: none; */
 }
 
 @keyframes navbarGlow {
@@ -58,29 +63,32 @@ body, html {
   overflow-x: hidden;
   overflow-y: auto;
 }
-/* Top Bar - User Left, Logo Right */
+/* Top Bar - Brand Left, Controls Right */
 .navbar-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 8px 24px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  width: 100%;
+  overflow: visible;
 }
 
 /* Brand - Left Side */
-.navbar-brand {
+.modern-navbar .navbar-brand {
   text-decoration: none !important;
-  color: white;
+  color: var(--nav-text-color);
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 12px;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  order: 1;
+  /* keep brand on the left */
+  order: 0;
   position: relative;
   /* Ensure brand sits on the left and pushes other items to the right */
-  margin-right: auto;
-  margin-left: 8px;
+  margin-right: auto !important;
+  margin-left: 0;
 }
 
 .navbar-brand::before {
@@ -183,14 +191,47 @@ body, html {
   justify-content: flex-start;
   width: 100%;
   padding: 8px 10px;
-  background: linear-gradient(135deg, var(--nav-grad-start-2) 0%, var(--nav-grad-mid-2) 100%);
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  -webkit-backdrop-filter: blur(14px) saturate(135%);
+  backdrop-filter: blur(14px) saturate(135%);
+  background: var(--nav-surface-secondary) !important;
+  border-top: 1px solid rgba(120, 53, 220, 0.18) !important;
+  box-shadow: 0 10px 32px rgba(120, 53, 220, 0.12), inset 0 1px 0 rgba(255,255,255,0.65);
   overflow-x: auto;
   overflow-y: visible !important;
-  /* removed redundant "overflow: visible !important" */
   position: relative;
   z-index: 50;
+}
+
+/* Ensure nav items are visible against the light menu */
+.modern-navbar .navbar-menu-fullwidth .nav-item {
+  color: #ffffff !important;
+  text-shadow: 0 2px 6px rgba(24, 17, 51, 0.45) !important;
+  background: transparent;
+  box-shadow: none;
+}
+
+.modern-navbar .navbar-menu-fullwidth .nav-item:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+
+.modern-navbar .navbar-menu-fullwidth .nav-item.active {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.18)) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 26px rgba(26, 16, 64, 0.28);
+}
+
+/* Dropdowns inside fullwidth menu — light panels with a subtle purple edge */
+.navbar-menu-fullwidth .dropdown-menu {
+  background: linear-gradient(180deg, #ffffff, #fff7ff) !important;
+  color: #1e293b !important;
+  border: 1px solid rgba(124,58,237,0.06) !important;
+  box-shadow: 0 10px 30px rgba(124,58,237,0.06) !important;
+}
+
+.navbar-menu-fullwidth .dropdown-item {
+  color: #1e293b !important;
 }
 
 .nav-links {
@@ -198,17 +239,16 @@ body, html {
   align-items: center;
   justify-content: flex-start;
   gap: 6px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   width: 100%;
-  overflow: visible !important;
+  overflow: visible;
   position: relative;
   z-index: 1000;
-  white-space: nowrap;
 }
 
 /* Nav Items */
 .nav-item {
-  color: rgba(255, 255, 255, 0.9);
+  color: #ffffff;
   text-decoration: none;
   padding: 8px 10px;
   font-size: 0.95rem;
@@ -228,7 +268,7 @@ body, html {
   line-height: 1;
   position: relative;
   z-index: 50;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  text-shadow: none;
 }
 
 .nav-item,
@@ -303,18 +343,20 @@ body, html {
   position: absolute;
   top: calc(100% + 8px);
   left: 0;
-  background: linear-gradient(135deg, rgba(136, 96, 208, 0.96) 0%, rgba(157, 125, 227, 0.96) 100%);
+  /* Slightly pink surface to improve contrast with dark text */
+  /* Light, modern translucent surface */
+  background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,250,255,0.92) 100%);
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  box-shadow: 0 12px 30px rgba(136, 96, 208, 0.28), 0 0 1px rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(30,41,59,0.06);
+  box-shadow: 0 8px 20px rgba(15,23,42,0.06);
   min-width: 220px;
   opacity: 0;
   visibility: hidden;
   transform: translateY(-15px) scale(0.95);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 2000 !important;
-  color: #f8fafc;
-  backdrop-filter: blur(20px) saturate(180%);
+  color: #1e293b; /* darker body text for accessibility */
+  backdrop-filter: blur(8px) saturate(110%);
   overflow: visible !important;
   padding: 0;
   pointer-events: none;
@@ -333,7 +375,7 @@ body, html {
   display: block;
   width: 100%;
   padding: 12px 18px;
-  color: #ffffff;
+  color: #1e293b;
   text-decoration: none;
   transition: all 0.2s ease;
   border: none;
@@ -342,7 +384,7 @@ body, html {
   cursor: pointer;
   font-size: 0.95rem;
   position: relative;
-  border-bottom: 1px solid rgba(157, 125, 227, 0.2);
+  border-bottom: 1px solid rgba(30,41,59,0.06);
   font-weight: 500;
 }
 
@@ -363,18 +405,19 @@ body, html {
 }
 
 .dropdown-item:hover {
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.08) 100%);
+  /* subtle modern hover */
+  background: linear-gradient(90deg, rgba(248,244,255,0.9) 0%, rgba(255,250,255,0.95) 100%);
   padding-left: 22px;
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.25);
-  box-shadow: inset 3px 0 0 rgba(255, 255, 255, 0.5);
+  color: #1e293b;
+  border-color: rgba(30,41,59,0.06);
+  box-shadow: inset 3px 0 0 rgba(30,41,59,0.04);
 }
 
 .dropdown-item.active {
-  background-color: rgba(255, 255, 255, 0.18);
-  color: #ffffff;
-  border-left: 3px solid rgba(255, 255, 255, 0.7);
-}
+  background: linear-gradient(135deg,#ffd6ea 0%, #ffc1e0 100%);
+  color: #1e293b;
+  border-left: 3px solid rgba(30,41,59,0.12);
+} 
 
 /* Submenu Styles - Below Dropdown */
 .dropdown-submenu-wrapper {
@@ -403,15 +446,15 @@ body, html {
 .dropdown-submenu {
   position: static;
   min-width: auto;
-  background: linear-gradient(135deg, rgba(136, 96, 208, 0.95) 0%, rgba(185, 158, 245, 0.95) 100%) !important;
+  background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(255,250,255,0.92) 100%) !important;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(30,41,59,0.06);
   margin: 8px 12px 0 12px;
-  backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(8px) saturate(110%);
   z-index: 9999 !important;
   display: none !important;
   overflow: visible !important;
-  box-shadow: 0 10px 30px rgba(136, 96, 208, 0.3), 0 0 20px rgba(157, 125, 227, 0.2);
+  box-shadow: 0 8px 20px rgba(15,23,42,0.06);
 }
 
 .dropdown-submenu-wrapper:hover .dropdown-submenu,
@@ -479,13 +522,14 @@ body, html {
 /* Dropdown Header */
 .dropdown-header {
   padding: 12px 18px;
-  border-bottom: 1px solid rgba(157, 125, 227, 0.3);
-  color: #ffffff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  color: #1e293b;
   font-size: 0.9rem;
   font-weight: 600;
   border-radius: 12px 12px 0 0;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
+  text-shadow: none;
+  background: rgba(255, 255, 255, 0.1);
+} 
 
 .dropdown-header small {
   color: #e9d5ff;
@@ -504,7 +548,7 @@ body, html {
   z-index: 2000;
   position: relative;
   flex-shrink: 0;
-  order: 2;
+  order: 1;
 }
 
 .nav-dropdown-wrapper {
@@ -600,6 +644,10 @@ body, html {
   transform: translateY(-10px);
   transition: all 0.3s ease;
   z-index: 1000;
+  background: linear-gradient(180deg, rgba(120, 88, 196, 0.95) 0%, rgba(169, 129, 255, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 20px rgba(66, 28, 150, 0.3);
+  backdrop-filter: blur(12px) saturate(140%);
 }
 
 .user-menu.show {
@@ -615,12 +663,35 @@ body, html {
 }
 
 .logout-btn:hover {
-  background-color: rgba(239, 68, 68, 0.15) !important;
+  background-color: rgba(252, 165, 165, 0.15) !important;
   color: #ffffff !important;
 }
 
 /* Notification badge and dropdown */
-.nav-notifications { margin-left: auto; margin-right: 12px; } /* keeps notifications and user dropdowns on the right */
+.navbar-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.nav-user {
+  order: 1;
+}
+
+.nav-notifications {
+  order: 2;
+  margin-left: 12px;
+  margin-right: 0;
+}
+
+/* Ensure dropdowns overlay and are not clipped */
+.modern-navbar .dropdown-menu {
+  z-index: 3000 !important;
+  transform: translateZ(0);
+}
 .notif-btn {
   position: relative;
   border-radius: 8px;
@@ -630,7 +701,11 @@ body, html {
   justify-content: center;
   border: none;
   background: transparent;
-  color: #475569;
+  color: #ffffff;
+}
+
+.notif-btn svg {
+  color: currentColor;
 }
 
 .notif-btn:hover { background: rgba(136, 96, 208, 0.04); }
@@ -651,10 +726,19 @@ body, html {
   justify-content: center;
 }
 
-.notifications-menu {
+.modern-navbar .notifications-menu {
   min-width: 260px;
-  max-width: 360px;
-}
+  max-width: 90vw;
+  right: 0;
+  left: auto;
+  transform-origin: top right;
+  /* Notifications menu - purple surface */
+  background: linear-gradient(180deg, #7c3aed 0%, #8860D0 45%, #b99ef5 100%) !important;
+  color: #fff !important;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(136,96,208,0.18) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+} 
 
 .notifications-menu .dropdown-header {
   padding: 8px 12px;
@@ -679,7 +763,13 @@ body, html {
     top: 55px;
     left: 0;
     right: 0;
-    background: linear-gradient(135deg, rgba(136, 96, 208, 0.92) 0%, rgba(185, 158, 245, 0.9) 100%);
+    /* Mobile full-width menu - lighter purple */
+    -webkit-backdrop-filter: blur(8px) saturate(115%);
+    backdrop-filter: blur(8px) saturate(115%);
+    /* Mobile: reuse premium glass gradient for consistency */
+    background: var(--nav-surface-secondary) !important;
+    border-top: 1px solid rgba(120,53,220,0.22) !important;
+    box-shadow: 0 12px 28px rgba(120,53,220,0.16) !important;
     flex-direction: column;
     align-items: flex-start;
     padding: 0;
@@ -724,7 +814,8 @@ body, html {
     visibility: visible;
     transform: none;
     transition: max-height 0.3s ease;
-    background: rgba(9, 4, 30, 0.35);
+    background: linear-gradient(180deg, #7c3aed 0%, #8860D0 45%, #b99ef5 100%);
+    color: #ffffff;
     border-radius: 8px;
     margin-top: 4px;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -808,5 +899,28 @@ body, html {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Force light pink background for navbar dropdown to override any conflicting rules */
+.modern-navbar .dropdown-menu {
+  background: linear-gradient(180deg, #fff0f6 0%, #ffe6f0 100%) !important;
+  color: #1e293b !important;
+}
+
+/* High-specificity override keeps gradients even when Bootstrap adds inline styles */
+.modern-navbar { background: var(--nav-surface-primary) !important; background-image: none !important; }
+.modern-navbar .navbar-menu-fullwidth,
+.navbar .modern-navbar .navbar-menu-fullwidth {
+  background: var(--nav-surface-secondary) !important;
+  border-top: 1px solid rgba(120, 53, 220, 0.18) !important;
+  box-shadow: 0 10px 32px rgba(120, 53, 220, 0.12), inset 0 1px 0 rgba(255,255,255,0.65) !important;
+}
+@media (max-width:768px) {
+  .modern-navbar { background: var(--nav-surface-primary) !important; background-image: none !important; }
+  .modern-navbar .navbar-menu-fullwidth {
+    background: var(--nav-surface-secondary) !important;
+    border-top:1px solid rgba(120, 53, 220, 0.22) !important;
+    box-shadow:0 12px 28px rgba(120,53,220,0.16) !important;
   }
 }
