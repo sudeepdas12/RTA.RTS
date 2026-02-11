@@ -17,6 +17,8 @@ COPY . /app
 
 # Create entrypoint
 COPY entrypoint.sh /app/entrypoint.sh
+# Normalize line endings to LF in case files were checked out with CRLF on Windows
+RUN sed -i -e 's/\r$//' /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
 # Collect static files when building (optional, also done at runtime)

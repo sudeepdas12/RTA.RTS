@@ -1,4 +1,5 @@
 #!/bin/sh
+# EOL: LF (normalized)
 # enable execution trace and exit on errors to make startup failures visible in logs
 set -ex
 

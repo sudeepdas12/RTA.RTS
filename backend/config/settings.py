@@ -25,6 +25,9 @@ SECRET_KEY = env('SECRET_KEY', default='django-insecure-change-this-in-productio
 DEBUG = env('DEBUG', default=True)
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])
+# Ensure Django test client host is allowed inside containers / test runs
+if 'testserver' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('testserver')
 
 # Application definition
 INSTALLED_APPS = [

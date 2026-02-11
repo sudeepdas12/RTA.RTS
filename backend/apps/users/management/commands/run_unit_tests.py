@@ -6,7 +6,7 @@ import sys
 MODULES_TO_RUN = [
     'apps.users.tests',
     'apps.companies.tests',
-    'backend.apps.companies.tests.test_smoke',
+    # add additional test modules here if needed
 ]
 
 class Command(BaseCommand):
