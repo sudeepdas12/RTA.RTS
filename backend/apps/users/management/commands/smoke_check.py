@@ -16,7 +16,8 @@ class Command(BaseCommand):
         errors = []
         for method, url in endpoints:
             if method == 'GET':
-                resp = client.get(url)
+                # Set HTTP_HOST to localhost to avoid DisallowedHost during tests
+                resp = client.get(url, HTTP_HOST='localhost')
             else:
                 resp = None
 
