@@ -6,6 +6,12 @@ class Command(BaseCommand):
     help = 'Run simple smoke checks against local API endpoints'
 
     def handle(self, *args, **options):
+        from django.conf import settings
+
+        # Ensure 'testserver' is allowed for requests made by the test client
+        if 'testserver' not in getattr(settings, 'ALLOWED_HOSTS', []):
+            settings.ALLOWED_HOSTS = list(getattr(settings, 'ALLOWED_HOSTS', [])) + ['testserver']
+
         client = Client()
         endpoints = [
             ('GET', '/api/companies/'),
