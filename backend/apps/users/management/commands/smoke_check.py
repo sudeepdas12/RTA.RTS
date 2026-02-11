@@ -12,10 +12,10 @@ class Command(BaseCommand):
         if 'testserver' not in getattr(settings, 'ALLOWED_HOSTS', []):
             settings.ALLOWED_HOSTS = list(getattr(settings, 'ALLOWED_HOSTS', [])) + ['testserver']
 
-        import urllib.request
-        import urllib.error
+        import socket
 
-        base = 'http://127.0.0.1:8000'
+        host = '127.0.0.1'
+        port = 8000
         endpoints = [
             ('GET', '/api/companies/'),
             ('GET', '/api/clients/'),
@@ -24,20 +24,22 @@ class Command(BaseCommand):
 
         errors = []
         for method, path in endpoints:
-            url = base + path
             try:
-                req = urllib.request.Request(url, method=method)
-                with urllib.request.urlopen(req, timeout=5) as resp:
-                    status = resp.getcode()
-            except urllib.error.HTTPError as e:
-                status = e.code
+                with socket.create_connection((host, port), timeout=3) as s:
+                    # send a minimal HTTP request with Host header
+                    req = f"{method} {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+                    s.sendall(req.encode('utf-8'))
+                    resp = s.recv(1024).decode('utf-8', errors='ignore')
+                    # parse status line e.g. HTTP/1.1 200 OK
+                    status_line = resp.splitlines()[0] if resp else ''
+                    parts = status_line.split(' ')
+                    status = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else None
             except Exception as e:
                 errors.append(f"{method} {path} -> ERROR: {str(e)}")
                 continue
 
             # Accept 200, 302 (root redirect), 401/403 for protected endpoints.
-            # In some local container environments a 400 (Bad Request due to Host)
-            # can also be observed; treat 400 as acceptable for smoke checks.
+            # In some container environments a 400 (Bad Request due to Host) can be observed.
             if status not in (200, 302, 401, 403, 400):
                 errors.append(f"{method} {path} -> {status}")
             else:
