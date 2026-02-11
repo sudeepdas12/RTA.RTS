@@ -12,6 +12,10 @@ const NavigationBar = () => {
   const [openSubmenu, setOpenSubmenu] = React.useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const navRef = React.useRef(null);
+  const userBtnRef = React.useRef(null);
+  const userMenuRef = React.useRef(null);
+  const notifBtnRef = React.useRef(null);
+  const notifMenuRef = React.useRef(null);
 
   const handleLogout = () => {
     logout();
@@ -99,6 +103,59 @@ const NavigationBar = () => {
     };
   }, []);
 
+  // Position dropdowns next to their trigger buttons to avoid misalignment
+  React.useEffect(() => {
+    const positionMenu = (btnRef, menuRef) => {
+      const btn = btnRef && btnRef.current;
+      const menu = menuRef && menuRef.current;
+      if (!btn || !menu) return;
+
+      // On mobile, delegate layout to CSS/mobile menu
+      if (typeof window !== 'undefined' && (window.innerWidth <= 768 || mobileMenuOpen)) {
+        menu.style.position = '';
+        menu.style.top = '';
+        menu.style.left = '';
+        menu.style.right = '';
+        return;
+      }
+
+      const rect = btn.getBoundingClientRect();
+      const top = rect.bottom + 8 + window.scrollY;
+      const menuWidth = menu.offsetWidth || 260;
+      let left = rect.right - menuWidth;
+      left = Math.max(8, Math.min(left, window.innerWidth - menuWidth - 8));
+
+      menu.style.position = 'fixed';
+      menu.style.top = `${top}px`;
+      menu.style.left = `${left}px`;
+      menu.style.right = '';
+      menu.style.zIndex = '110000';
+    };
+
+    const update = () => {
+      if (openDropdown === 'user') positionMenu(userBtnRef, userMenuRef);
+      else if (openDropdown === 'notifications') positionMenu(notifBtnRef, notifMenuRef);
+      else {
+        [userMenuRef, notifMenuRef].forEach(r => {
+          if (r && r.current) {
+            r.current.style.position = '';
+            r.current.style.top = '';
+            r.current.style.left = '';
+            r.current.style.right = '';
+          }
+        });
+      }
+    };
+
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, { passive: true });
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update);
+    };
+  }, [openDropdown, mobileMenuOpen]);
+
   const getInitials = (name = '') => {
     const trimmed = name.trim();
     if (!trimmed) return 'U';
@@ -147,12 +204,13 @@ const NavigationBar = () => {
               <button 
                 className="nav-item user-btn"
                 onClick={() => toggleDropdown('user')}
+                ref={userBtnRef}
               >
                 <span className="user-avatar">{initials}</span>
                 <span className="user-name">{displayName}</span>
                 <FaChevronRight className={`dropdown-icon ${openDropdown === 'user' ? 'open' : ''}`} />
               </button>
-              <div className={`dropdown-menu user-menu ${openDropdown === 'user' ? 'show' : ''}`}>
+              <div className={`dropdown-menu user-menu ${openDropdown === 'user' ? 'show' : ''}`} ref={userMenuRef}>
                 <div className="dropdown-header">
                   <small>Role: <strong>{user?.role || 'N/A'}</strong></small>
                 </div>
@@ -173,12 +231,13 @@ const NavigationBar = () => {
                 className={`nav-item notif-btn ${openDropdown === 'notifications' ? 'active' : ''}`}
                 onClick={() => toggleDropdown('notifications')}
                 title="Pending approvals"
+                ref={notifBtnRef}
               >
                 <FaBell />
                 {pendingCount > 0 && <span className="notif-badge">{pendingCount}</span>}
               </button>
 
-              <div className={`dropdown-menu notifications-menu ${openDropdown === 'notifications' ? 'show' : ''}`}>
+              <div className={`dropdown-menu notifications-menu ${openDropdown === 'notifications' ? 'show' : ''}`} ref={notifMenuRef}>
                 <div className="dropdown-header">
                   <small>Pending Approvals</small>
                 </div>

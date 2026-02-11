@@ -655,20 +655,30 @@ body, html {
 }
 
 .user-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  /* Use fixed positioning so the menu escapes any parent stacking contexts */
+  position: fixed;
+  /* anchored below the navbar; adjust if your navbar height changes */
+  top: calc(56px + 8px);
+  right: 16px;
   border-radius: 14px;
   min-width: 200px;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-10px);
-  transition: all 0.3s ease;
-  z-index: 1000;
+  transform: translateY(-6px);
+  transition: all 0.2s ease;
+  z-index: 110000 !important;
   background: linear-gradient(180deg, rgba(120, 88, 196, 0.95) 0%, rgba(169, 129, 255, 0.9) 100%);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 8px 20px rgba(66, 28, 150, 0.3);
+  box-shadow: 0 12px 30px rgba(66, 28, 150, 0.4);
   backdrop-filter: blur(12px) saturate(140%);
+  pointer-events: none;
+}
+
+.user-menu.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 .user-menu.show {
@@ -748,18 +758,27 @@ body, html {
 }
 
 .modern-navbar .notifications-menu {
+  /* Use fixed positioning so notifications overlay all content */
+  position: fixed;
+  top: calc(56px + 8px);
+  right: 72px; /* offset from the right to sit next to the user menu / controls */
   min-width: 260px;
   max-width: 90vw;
-  right: 0;
   left: auto;
   transform-origin: top right;
+  z-index: 110000 !important;
   /* Notifications menu - purple surface */
   background: linear-gradient(180deg, #7c3aed 0%, #8860D0 45%, #b99ef5 100%) !important;
   color: #fff !important;
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(136,96,208,0.18) !important;
+  box-shadow: 0 12px 36px rgba(136,96,208,0.22) !important;
   border: 1px solid rgba(255,255,255,0.12) !important;
-} 
+  pointer-events: none;
+}
+
+.modern-navbar .notifications-menu.show {
+  pointer-events: auto;
+}
 
 .notifications-menu .dropdown-header {
   padding: 8px 12px;
@@ -943,5 +962,17 @@ body, html {
     background: var(--nav-surface-secondary) !important;
     border-top:1px solid rgba(120, 53, 220, 0.22) !important;
     box-shadow:0 12px 28px rgba(120,53,220,0.16) !important;
+  }
+
+  /* Mobile fallback: keep menus positioned relative to the navbar/menu */
+  .user-menu,
+  .modern-navbar .notifications-menu {
+    position: absolute !important;
+    top: auto !important;
+    right: 16px !important;
+    left: auto !important;
+    transform: translateY(0) !important;
+    z-index: 2000 !important;
+    pointer-events: auto !important;
   }
 }
