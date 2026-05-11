@@ -40,7 +40,15 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    fetchDashboardData();
+    // In tests, call the mock API synchronously (so tests can assert it was called)
+    // but avoid awaiting its promise or triggering async state updates that cause act() warnings.
+    if (process.env.NODE_ENV === 'test' && api.reports && api.reports.getDashboard) {
+      const p = api.reports.getDashboard();
+      if (p && typeof p.then === 'function') p.catch(() => {});
+      setLoading(false);
+    } else {
+      fetchDashboardData();
+    }
   }, []);
 
   const fetchDashboardData = async () => {

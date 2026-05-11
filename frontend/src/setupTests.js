@@ -39,3 +39,44 @@ global.sessionStorage = sessionStorageMock;
 
 // Mock fetch for API testing
 global.fetch = jest.fn();
+
+// Stub HTMLCanvasElement.getContext to avoid jsdom canvas errors from Chart.js
+HTMLCanvasElement.prototype.getContext = function() {
+  return {
+    fillRect: () => {},
+    clearRect: () => {},
+    getImageData: (x, y, w, h) => ({ data: new Array(w * h * 4) }),
+    putImageData: () => {},
+    createImageData: () => [],
+    setTransform: () => {},
+    drawImage: () => {},
+    save: () => {},
+    fillText: () => {},
+    restore: () => {},
+    beginPath: () => {},
+    moveTo: () => {},
+    lineTo: () => {},
+    closePath: () => {},
+    stroke: () => {},
+    translate: () => {},
+    scale: () => {},
+    rotate: () => {},
+    arc: () => {},
+    fill: () => {},
+    measureText: () => ({ width: 0 }),
+    transform: () => {},
+    rect: () => {},
+    clip: () => {},
+    createLinearGradient: () => ({ addColorStop: () => {} }),
+    createPattern: () => ({}),
+  };
+};
+
+// Ensure react-chartjs-2 is mocked globally during tests (uses our manual mock)
+try {
+  // relative path from this file to the manual mock
+  // eslint-disable-next-line global-require
+  jest.mock('react-chartjs-2', () => require('../__mocks__/react-chartjs-2.js'));
+} catch (e) {
+  // jest may not be defined in non-test environments; ignore
+}
