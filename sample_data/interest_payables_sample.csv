@@ -1,0 +1,3 @@
+company_code,client_code,boid,instrument_ref,gross_interest,tax_amount,due_date,payment_status
+COMP001,CL001,BOID-CL001,BOND-2024-001,50000,7500,2026-03-15,Pending
+COMP002,CL002,BOID-CL002,DEB-2024-002,100000,15000,2026-03-30,Paid

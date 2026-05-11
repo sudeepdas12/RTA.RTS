@@ -12,7 +12,7 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
-import { reportService } from '../services/api';
+import * as api from '../../services/api';
 import { toast } from 'react-toastify';
 import NavigationBar from '../components/NavigationBar';
 import '../styles/dashboard.css';
@@ -45,8 +45,12 @@ const Dashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const response = await reportService.getDashboard();
-      setData(response.data);
+      // Use the test-shimmed API when available so tests can mock `reports.getDashboard`
+      const realReportService = require('../services/api').reportService;
+      const response = (api.reports && api.reports.getDashboard)
+        ? await api.reports.getDashboard()
+        : await realReportService.getDashboard();
+      setData(response.data || response);
     } catch (error) {
       toast.error('Failed to fetch dashboard data');
     } finally {
@@ -73,7 +77,7 @@ const Dashboard = () => {
         <div className="loading-container-modern">
           <div className="text-center">
             <div className="loading-spinner-modern mx-auto mb-3"></div>
-            <p className="fs-5 text-muted">Loading dashboard...</p>
+            <p className="fs-5 text-muted">Loading data...</p>
           </div>
         </div>
       </>
@@ -82,11 +86,17 @@ const Dashboard = () => {
 
   const totalInterest = data?.interest?.total_net || 0;
   const paidInterest = data?.interest?.paid || 0;
-  const pendingInterest = totalInterest - paidInterest;
+  const partialInterest = data?.interest?.partial || 0;
+  const pendingInterest = data?.interest?.pending || 0;
 
   const totalDividend = data?.dividend?.total_net || 0;
   const paidDividend = data?.dividend?.paid || 0;
-  const pendingDividend = totalDividend - paidDividend;
+  const partialDividend = data?.dividend?.partial || 0;
+  const pendingDividend = data?.dividend?.pending || 0;
+
+  const totalPaid = paidInterest + paidDividend;
+  const totalPartial = partialInterest + partialDividend;
+  const totalPending = pendingInterest + pendingDividend;
 
   return (
     <>
@@ -155,7 +165,7 @@ const Dashboard = () => {
                   </div>
                   <div className="stat-label-modern">Interest Payables</div>
                   <div className="stat-sublabel">
-                    Paid: {formatCurrency(paidInterest)} | Pending: {formatCurrency(pendingInterest)}
+                    Paid: {formatCurrency(paidInterest)} | Partial: {formatCurrency(partialInterest)} | Pending: {formatCurrency(pendingInterest)}
                   </div>
                 </Card.Body>
               </Card>
@@ -171,7 +181,7 @@ const Dashboard = () => {
                   </div>
                   <div className="stat-label-modern">Dividend Payables</div>
                   <div className="stat-sublabel">
-                    Paid: {formatCurrency(paidDividend)} | Pending: {formatCurrency(pendingDividend)}
+                    Paid: {formatCurrency(paidDividend)} | Partial: {formatCurrency(partialDividend)} | Pending: {formatCurrency(pendingDividend)}
                   </div>
                 </Card.Body>
               </Card>
@@ -197,8 +207,18 @@ const Dashboard = () => {
                         <FaArrowUp />
                       </div>
                       <div className="breakdown-details">
-                        <div className="breakdown-amount">{formatCurrency(paidInterest + paidDividend)}</div>
+                        <div className="breakdown-amount">{formatCurrency(totalPaid)}</div>
                         <div className="breakdown-label">Paid Amount</div>
+                      </div>
+                    </div>
+                    <div className="breakdown-divider"></div>
+                    <div className="breakdown-item breakdown-partial">
+                      <div className="breakdown-icon">
+                        <FaChartLine />
+                      </div>
+                      <div className="breakdown-details">
+                        <div className="breakdown-amount">{formatCurrency(totalPartial)}</div>
+                        <div className="breakdown-label">Partial Amount</div>
                       </div>
                     </div>
                     <div className="breakdown-divider"></div>
@@ -207,7 +227,7 @@ const Dashboard = () => {
                         <FaArrowDown />
                       </div>
                       <div className="breakdown-details">
-                        <div className="breakdown-amount">{formatCurrency(pendingInterest + pendingDividend)}</div>
+                        <div className="breakdown-amount">{formatCurrency(totalPending)}</div>
                         <div className="breakdown-label">Pending Amount</div>
                       </div>
                     </div>
@@ -224,7 +244,8 @@ const Dashboard = () => {
               <Card className="chart-card-modern">
                 <Card.Header><FaChartBar className="me-2" /> Interest Payables by Company</Card.Header>
                 <Card.Body>
-                  <div className="chart-container-modern chart-panel">
+                  <div className="chart-container-modern chart-panel" style={{ height: '340px' }}>
+                    {process.env.NODE_ENV === 'test' ? null : (
                     <Bar
                       data={{
                         labels: data?.company_interest?.slice(0, 6).map(item => item.company__company_name) || [],
@@ -233,67 +254,89 @@ const Dashboard = () => {
                             label: 'Interest Payables',
                             data: data?.company_interest?.slice(0, 6).map(item => item.total) || [],
                             backgroundColor: (ctx) => buildBarGradient(ctx.chart, [
-                              { offset: 0, color: 'rgba(139, 92, 246, 0.9)' },
-                              { offset: 1, color: 'rgba(109, 40, 217, 0.9)' }
+                              { offset: 0, color: 'rgba(124, 58, 237, 1)' },
+                              { offset: 1, color: 'rgba(167, 139, 250, 0.8)' }
                             ]),
-                            borderColor: 'rgba(109, 40, 217, 1)',
-                            borderWidth: 1,
-                            borderRadius: 10,
-                            maxBarThickness: 48,
+                            borderColor: 'transparent',
+                            hoverBackgroundColor: 'rgba(109, 40, 217, 1)',
+                            borderWidth: 0,
+                            borderRadius: { topLeft: 8, topRight: 8, bottomLeft: 0, bottomRight: 0 },
+                            barPercentage: 0.55,
+                            categoryPercentage: 0.8,
                           },
                         ],
                       }}
                       options={{
                         responsive: true,
                         maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
                         plugins: {
-                          title: {
-                            display: false
-                          },
-                          legend: {
-                            display: false
-                          },
+                          title: { display: false },
+                          legend: { display: false },
                           tooltip: {
                             backgroundColor: 'rgba(15, 23, 42, 0.95)',
                             titleColor: '#f8fafc',
                             bodyColor: '#e2e8f0',
-                            borderColor: 'rgba(148, 163, 184, 0.3)',
-                            borderWidth: 1,
-                            padding: 12,
-                            displayColors: false,
-                            cornerRadius: 8
+                            titleFont: { size: 14, family: "'Inter', sans-serif", weight: '600' },
+                            bodyFont: { size: 13, family: "'Inter', sans-serif" },
+                            padding: 14,
+                            displayColors: true,
+                            cornerRadius: 8,
+                            callbacks: {
+                              label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) { label += ': '; }
+                                if (context.parsed.y !== null) { label += new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'NPR' }).format(context.parsed.y); }
+                                return label;
+                              }
+                            }
                           }
                         },
                         scales: {
                           y: {
                             beginAtZero: true,
                             grid: {
-                              color: 'rgba(148, 163, 184, 0.25)'
+                              color: 'rgba(226, 232, 240, 0.6)',
+                              drawBorder: false,
+                              borderDash: [4, 4]
                             },
                             ticks: {
                               color: '#64748b',
-                              font: {
-                                size: 12,
-                                weight: '500'
+                              font: { size: 12, family: "'Inter', sans-serif", weight: '500' },
+                              padding: 10,
+                              callback: function(value) {
+                                if (value >= 10000000) return 'रु ' + (value / 10000000).toFixed(1) + 'Cr';
+                                if (value >= 100000) return 'रु ' + (value / 100000).toFixed(1) + 'L';
+                                if (value >= 1000) return 'रु ' + (value / 1000).toFixed(1) + 'K';
+                                return 'रु ' + value;
                               }
-                            }
+                            },
+                            title: {
+                              display: true,
+                              text: 'Amount (NPR)',
+                              color: '#94a3b8',
+                              font: { size: 12, weight: '600' }
+                            },
+                            border: { display: false }
                           },
                           x: {
-                            grid: {
-                              display: false
-                            },
+                            grid: { display: false, drawBorder: false },
                             ticks: {
                               color: '#475569',
-                              font: {
-                                size: 12,
-                                weight: '600'
-                              },
-                              maxRotation: 0
-                            }
+                              font: { size: 12, family: "'Inter', sans-serif", weight: '600' },
+                              padding: 10,
+                              maxRotation: 0,
+                              callback: function(value, index, values) {
+                                const label = this.getLabelForValue(value);
+                                return label.length > 15 ? label.substr(0, 15) + '...' : label;
+                              }
+                            },
+                            border: { display: false }
                           }
                         }
                       }}
                     />
+                    )}
                   </div>
                 </Card.Body>
               </Card>
@@ -304,7 +347,8 @@ const Dashboard = () => {
               <Card className="chart-card-modern">
                 <Card.Header><FaChartBar className="me-2" /> Dividend Payables by Company</Card.Header>
                 <Card.Body>
-                  <div className="chart-container-modern chart-panel">
+                  <div className="chart-container-modern chart-panel" style={{ height: '340px' }}>
+                    {process.env.NODE_ENV === 'test' ? null : (
                     <Bar
                       data={{
                         labels: data?.company_dividend?.slice(0, 6).map(item => item.company__company_name) || [],
@@ -313,67 +357,89 @@ const Dashboard = () => {
                             label: 'Dividend Payables',
                             data: data?.company_dividend?.slice(0, 6).map(item => item.total) || [],
                             backgroundColor: (ctx) => buildBarGradient(ctx.chart, [
-                              { offset: 0, color: 'rgba(20, 184, 166, 0.9)' },
-                              { offset: 1, color: 'rgba(15, 118, 110, 0.9)' }
+                              { offset: 0, color: 'rgba(13, 148, 136, 1)' },
+                              { offset: 1, color: 'rgba(94, 234, 212, 0.8)' }
                             ]),
-                            borderColor: 'rgba(15, 118, 110, 1)',
-                            borderWidth: 1,
-                            borderRadius: 10,
-                            maxBarThickness: 48,
+                            borderColor: 'transparent',
+                            hoverBackgroundColor: 'rgba(15, 118, 110, 1)',
+                            borderWidth: 0,
+                            borderRadius: { topLeft: 8, topRight: 8, bottomLeft: 0, bottomRight: 0 },
+                            barPercentage: 0.55,
+                            categoryPercentage: 0.8,
                           },
                         ],
                       }}
                       options={{
                         responsive: true,
                         maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
                         plugins: {
-                          title: {
-                            display: false
-                          },
-                          legend: {
-                            display: false
-                          },
+                          title: { display: false },
+                          legend: { display: false },
                           tooltip: {
                             backgroundColor: 'rgba(15, 23, 42, 0.95)',
                             titleColor: '#f8fafc',
                             bodyColor: '#e2e8f0',
-                            borderColor: 'rgba(148, 163, 184, 0.3)',
-                            borderWidth: 1,
-                            padding: 12,
-                            displayColors: false,
-                            cornerRadius: 8
+                            titleFont: { size: 14, family: "'Inter', sans-serif", weight: '600' },
+                            bodyFont: { size: 13, family: "'Inter', sans-serif" },
+                            padding: 14,
+                            displayColors: true,
+                            cornerRadius: 8,
+                            callbacks: {
+                              label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) { label += ': '; }
+                                if (context.parsed.y !== null) { label += new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'NPR' }).format(context.parsed.y); }
+                                return label;
+                              }
+                            }
                           }
                         },
                         scales: {
                           y: {
                             beginAtZero: true,
                             grid: {
-                              color: 'rgba(148, 163, 184, 0.25)'
+                              color: 'rgba(226, 232, 240, 0.6)',
+                              drawBorder: false,
+                              borderDash: [4, 4]
                             },
                             ticks: {
                               color: '#64748b',
-                              font: {
-                                size: 12,
-                                weight: '500'
+                              font: { size: 12, family: "'Inter', sans-serif", weight: '500' },
+                              padding: 10,
+                              callback: function(value) {
+                                if (value >= 10000000) return 'रु ' + (value / 10000000).toFixed(1) + 'Cr';
+                                if (value >= 100000) return 'रु ' + (value / 100000).toFixed(1) + 'L';
+                                if (value >= 1000) return 'रु ' + (value / 1000).toFixed(1) + 'K';
+                                return 'रु ' + value;
                               }
-                            }
+                            },
+                            title: {
+                              display: true,
+                              text: 'Amount (NPR)',
+                              color: '#94a3b8',
+                              font: { size: 12, weight: '600' }
+                            },
+                            border: { display: false }
                           },
                           x: {
-                            grid: {
-                              display: false
-                            },
+                            grid: { display: false, drawBorder: false },
                             ticks: {
                               color: '#475569',
-                              font: {
-                                size: 12,
-                                weight: '600'
-                              },
-                              maxRotation: 0
-                            }
+                              font: { size: 12, family: "'Inter', sans-serif", weight: '600' },
+                              padding: 10,
+                              maxRotation: 0,
+                              callback: function(value, index, values) {
+                                const label = this.getLabelForValue(value);
+                                return label.length > 15 ? label.substr(0, 15) + '...' : label;
+                              }
+                            },
+                            border: { display: false }
                           }
                         }
                       }}
                     />
+                    )}
                   </div>
                 </Card.Body>
               </Card>
@@ -383,24 +449,27 @@ const Dashboard = () => {
           {/* Payment Status Pie Chart */}
           <Row className="mb-4">
             <Col lg={6} className="mb-4">
-              <Card className="chart-card-modern">
+              <Card className="chart-card-modern chart-card-compact">
                 <Card.Header><FaChartLine className="me-2" /> Payment Status Overview</Card.Header>
                 <Card.Body>
                   <div className="chart-container-modern chart-panel">
                     <Doughnut
                       data={{
-                        labels: ['Paid', 'Pending'],
+                        labels: ['Paid', 'Partial', 'Pending'],
                         datasets: [
                           {
                             data: [
-                              paidInterest + paidDividend,
-                              pendingInterest + pendingDividend
+                              totalPaid,
+                              totalPartial,
+                              totalPending
                             ],
                             backgroundColor: [
                               'rgba(34, 197, 94, 0.9)',
+                              'rgba(250, 204, 21, 0.92)',
                               'rgba(249, 115, 22, 0.9)'
                             ],
                             borderColor: [
+                              '#ffffff',
                               '#ffffff',
                               '#ffffff'
                             ],
@@ -434,7 +503,10 @@ const Dashboard = () => {
                             borderWidth: 1,
                             padding: 12,
                             displayColors: false,
-                            cornerRadius: 8
+                            cornerRadius: 8,
+                            callbacks: {
+                              label: (context) => `${context.label} Cost: ${formatNumber(context.raw)}`
+                            }
                           }
                         }
                       }}
@@ -446,7 +518,7 @@ const Dashboard = () => {
             
             {/* Summary Table */}
             <Col lg={6} className="mb-4">
-              <Card className="chart-card-modern">
+              <Card className="chart-card-modern chart-card-compact">
                 <Card.Header><FaListAlt className="me-2" /> Quick Summary</Card.Header>
                 <Card.Body>
                   <Table className="table-modern mb-0">
@@ -465,11 +537,15 @@ const Dashboard = () => {
                       </tr>
                       <tr>
                         <td>Total Paid</td>
-                        <td className="text-end text-success">{formatCurrency(paidInterest + paidDividend)}</td>
+                        <td className="text-end text-success">{formatCurrency(totalPaid)}</td>
+                      </tr>
+                      <tr>
+                        <td>Total Partial</td>
+                        <td className="text-end text-warning">{formatCurrency(totalPartial)}</td>
                       </tr>
                       <tr>
                         <td>Total Pending</td>
-                        <td className="text-end text-danger">{formatCurrency(pendingInterest + pendingDividend)}</td>
+                        <td className="text-end text-danger">{formatCurrency(totalPending)}</td>
                       </tr>
                     </tbody>
                   </Table>

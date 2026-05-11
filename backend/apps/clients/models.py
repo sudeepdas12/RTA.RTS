@@ -18,6 +18,14 @@ class Client(models.Model):
     client_id = models.AutoField(primary_key=True)
     client_code = models.CharField(max_length=20, unique=True)
     full_name = models.CharField(max_length=200)
+    # optional link to issuing company
+    company = models.ForeignKey(
+        'companies.Company',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='clients'
+    )
     # BOID is a unique identifier used for lookups/searches. It's required for new clients.
     boid = models.CharField(max_length=50, unique=True, null=True, blank=True)
     holder_type = models.CharField(max_length=50, choices=HOLDER_TYPE_CHOICES, null=True, blank=True)

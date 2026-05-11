@@ -12,7 +12,6 @@ const DividendSummaryReports = () => {
   const [interestRate, setInterestRate] = useState(7);
   const [taxRate, setTaxRate] = useState(0);
   const [interestDays, setInterestDays] = useState(0);
-  const [useRangeDays, setUseRangeDays] = useState(true);
   const [fiscalYears, setFiscalYears] = useState([]);
   const [selectedFiscalYear, setSelectedFiscalYear] = useState('');
   const [range, setRange] = useState({ fromDate: '', toDate: '' });
@@ -31,17 +30,32 @@ const DividendSummaryReports = () => {
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState('all');
   const [uniqueCompanies, setUniqueCompanies] = useState([]);
 
-  const summarize = (items) => ({
-    kitta: items.reduce((sum, item) => sum + (item.shares_held || 0), 0),
-    amount: items.reduce((sum, item) => sum + (item.gross_dividend || 0), 0),
-    tax: items.reduce((sum, item) => sum + (item.tax_amount || 0), 0),
-    net: items.reduce((sum, item) => sum + (item.net_payable || 0), 0),
-  });
+  const toNum = useCallback((x) => {
+    const n = Number(x);
+    return isNaN(n) ? 0 : n;
+  }, []);
+
+  const summarize = useCallback((items) => ({
+    kitta: items.reduce((sum, item) => sum + toNum(item.shares_held), 0),
+    amount: items.reduce((sum, item) => sum + toNum(item.gross_dividend), 0),
+    tax: items.reduce((sum, item) => sum + toNum(item.tax_amount), 0),
+    net: items.reduce((sum, item) => sum + toNum(item.net_payable), 0),
+  }), [toNum]);
 
   const normalizeFiscalYear = (value) => String(value || '')
     .trim()
     .replace('-', '/')
     .replace(/\s+/g, '');
+
+  const normalizeBoid = (value) => String(value || '').trim().toUpperCase();
+
+  const normalizeSector = (value) => {
+    const sector = String(value || '').trim().toLowerCase();
+    if (sector === 'public') return 'Public';
+    if (sector === 'private') return 'Private';
+    if (sector.includes('tax') || sector.includes('exempt')) return 'Tax-Exempted Sector';
+    return 'Uncategorized';
+  };
 
   const getHolderType = (item) => {
     const holder = String(item.holder_type || '').toLowerCase();
@@ -69,9 +83,9 @@ const DividendSummaryReports = () => {
     const rows = Object.keys(groups).map((type) => ({
       type,
       count: groups[type].length,
-      amount: groups[type].reduce((sum, it) => sum + (it.gross_dividend || 0), 0),
-      tax: groups[type].reduce((sum, it) => sum + (it.tax_amount || 0), 0),
-      net: groups[type].reduce((sum, it) => sum + (it.net_payable || 0), 0),
+      amount: groups[type].reduce((sum, it) => sum + toNum(it.gross_dividend), 0),
+      tax: groups[type].reduce((sum, it) => sum + toNum(it.tax_amount), 0),
+      net: groups[type].reduce((sum, it) => sum + toNum(it.net_payable), 0),
     }));
 
     const total = rows.reduce((acc, row) => ({
@@ -136,7 +150,6 @@ const DividendSummaryReports = () => {
 
   const handleFiscalYearChange = (yearValue) => {
     setSelectedFiscalYear(yearValue);
-    setUseRangeDays(true);
     const selectedYear = fiscalYears.find(y => normalizeFiscalYear(y.fiscal_year) === normalizeFiscalYear(yearValue));
     if (selectedYear) {
       setInterestRate(parseFloat(selectedYear.interest_rate));
@@ -160,12 +173,6 @@ const DividendSummaryReports = () => {
   };
 
   useEffect(() => {
-    if (useRangeDays) {
-      setInterestDays(computeRangeDays(range.fromDate, range.toDate));
-    }
-  }, [range, useRangeDays]);
-
-  useEffect(() => {
     if (selectedCompanyFilter !== 'all' && !uniqueCompanies.includes(selectedCompanyFilter)) {
       setSelectedCompanyFilter('all');
     }
@@ -178,14 +185,45 @@ const DividendSummaryReports = () => {
   });
 
   useEffect(() => {
+    // Priority 1: explicit date range selected by user
+    const explicitDays = computeRangeDays(range.fromDate, range.toDate);
+    if (explicitDays > 0) {
+      setInterestDays(explicitDays);
+      return;
+    }
+
+    // Priority 2: infer a sensible period from filtered records when range is blank
+    const parsedDates = filteredItems
+      .map((item) => item.declaration_date || item.payment_date || item.created_at || '')
+      .filter(Boolean)
+      .map((value) => new Date(value))
+      .filter((date) => !Number.isNaN(date.getTime()));
+
+    if (parsedDates.length === 0) {
+      setInterestDays(1);
+      return;
+    }
+
+    const minDate = new Date(Math.min(...parsedDates.map((d) => d.getTime())));
+    const maxDate = new Date(Math.max(...parsedDates.map((d) => d.getTime())));
+    const inferredDays = computeRangeDays(
+      minDate.toISOString().slice(0, 10),
+      maxDate.toISOString().slice(0, 10)
+    );
+    setInterestDays(inferredDays > 0 ? inferredDays : 1);
+  }, [range.fromDate, range.toDate, filteredItems]);
+
+  useEffect(() => {
     const totalSummary = summarize(filteredItems);
-    const publicSector = filteredItems.filter(item => item.company_sector === 'Public');
-    const privateSector = filteredItems.filter(item => item.company_sector === 'Private');
-    const taxExemptedSector = filteredItems.filter(item => item.company_sector === 'Tax Exempted' || (item.company_sector && item.company_sector.toLowerCase().includes('exempt')));
+    const publicSector = filteredItems.filter(item => normalizeSector(item.company_sector) === 'Public');
+    const privateSector = filteredItems.filter(item => normalizeSector(item.company_sector) === 'Private');
+    const taxExemptedSector = filteredItems.filter(item => normalizeSector(item.company_sector) === 'Tax-Exempted Sector');
+    const uncategorizedSector = filteredItems.filter(item => normalizeSector(item.company_sector) === 'Uncategorized');
     setSectorSummary([
       { type: 'Public', ...summarize(publicSector) },
       { type: 'Private', ...summarize(privateSector) },
       { type: 'Tax-Exempted Sector', ...summarize(taxExemptedSector) },
+      { type: 'Uncategorized', ...summarize(uncategorizedSector) },
       { type: 'Total', ...totalSummary, isTotal: true },
     ]);
 
@@ -193,16 +231,29 @@ const DividendSummaryReports = () => {
     filteredItems.forEach(item => {
       const name = item.company_name || 'Unknown';
       if (!companyMap[name]) {
-        companyMap[name] = { company: name, kitta: 0, amount: 0, tax: 0, net: 0 };
+        companyMap[name] = { company: name, kitta: 0, amount: 0, tax: 0, net: 0, boids: new Set() };
       }
       companyMap[name].kitta += Number(item.shares_held || 0);
       companyMap[name].amount += Number(item.gross_dividend || 0);
       companyMap[name].tax += Number(item.tax_amount || 0);
       companyMap[name].net += Number(item.net_payable || 0);
+      const normalizedBoid = normalizeBoid(item.client_boid);
+      if (normalizedBoid) {
+        companyMap[name].boids.add(normalizedBoid);
+      }
     });
-    const companyRows = Object.values(companyMap).sort((a, b) => b.net - a.net);
+    const companyRows = Object.values(companyMap)
+      .map((row) => ({
+        company: row.company,
+        kitta: row.kitta,
+        amount: row.amount,
+        tax: row.tax,
+        net: row.net,
+        boidCount: row.boids.size,
+      }))
+      .sort((a, b) => b.net - a.net);
     setCompanySummary(companyRows);
-  }, [filteredItems]);
+  }, [filteredItems, summarize]);
 
 
   const handleExport = async () => {
@@ -245,10 +296,19 @@ const DividendSummaryReports = () => {
       .sort()
       .reverse();
 
+  const derivedTaxRate = (() => {
+    const gross = filteredItems.reduce((sum, item) => sum + toNum(item.gross_dividend), 0);
+    const tax = filteredItems.reduce((sum, item) => sum + toNum(item.tax_amount), 0);
+    if (gross <= 0 || tax <= 0) return 0;
+    return (tax / gross) * 100;
+  })();
+
+  const effectiveTaxRate = taxRate > 0 ? taxRate : derivedTaxRate;
+
   const sectorInterestRows = sectorSummary.map((row) => {
     const interestPerDay = (row.amount || 0) * (interestRate / 100) / 365;
     const interestPumori = interestPerDay * (interestDays || 0);
-    const tax = interestPumori * (taxRate / 100);
+    const tax = interestPumori * (effectiveTaxRate / 100);
     const netInterest = interestPumori - tax;
     return {
       ...row,
@@ -263,7 +323,7 @@ const DividendSummaryReports = () => {
   const companyInterestRows = companySummary.map((row) => {
     const interestPerDay = (row.amount || 0) * (interestRate / 100) / 365;
     const interestPumori = interestPerDay * (interestDays || 0);
-    const tax = interestPumori * (taxRate / 100);
+    const tax = interestPumori * (effectiveTaxRate / 100);
     const netInterest = interestPumori - tax;
     return {
       ...row,
@@ -282,10 +342,10 @@ const DividendSummaryReports = () => {
   // Compute holder-type breakdown for selected company or 'all'
   const companyTypeRows = selectedCompanyFilter === 'all'
     ? []
-    : buildTypeRows(allDividendData.filter(i => i.company_name === selectedCompanyFilter));
+    : buildTypeRows(filteredItems.filter(i => i.company_name === selectedCompanyFilter));
 
   const handleCompanyClick = (companyName) => {
-    const details = allDividendData.filter(item => item.company_name === companyName);
+    const details = filteredItems.filter(item => item.company_name === companyName);
     setCompanyDetails(details);
     setSelectedCompany(companyName);
     setShowDetailsModal(true);
@@ -295,9 +355,10 @@ const DividendSummaryReports = () => {
     setExportingBreakdown(true);
     try {
       const csvContent = [
-        ['Company Name', 'Kitta', 'Amount', 'Tax', 'Net Interest'] ,
+        ['Company Name', 'Distinct BOIDs', 'Kitta', 'Amount', 'Tax', 'Net Interest'] ,
         ...companySummary.map(row => [
           row.company,
+          row.boidCount,
           row.kitta,
           row.amount.toFixed(2),
           row.tax.toFixed(2),
@@ -416,10 +477,10 @@ const DividendSummaryReports = () => {
 
               <Card className="chart-card-modern mt-4 summary-report-card">
                 <Card.Header className="summary-report-header">
-                  <span><FaMoneyBillWave style={{ marginRight: '0.5rem' }} /> Interest-Style Summary by Sector</span>
+                  <span><FaMoneyBillWave style={{ marginRight: '0.5rem' }} /> Dividend Summary by Sector</span>
                 </Card.Header>
                 <Card.Body>
-                  <p className="text-muted small mb-3">Calculated using the interest settings above</p>
+                  <p className="text-muted small mb-3">Calculated for the selected period and fiscal settings</p>
                   <div className="table-responsive">
                     <Table className="table-modern mb-0 summary-report-table">
                       <thead>
@@ -427,7 +488,7 @@ const DividendSummaryReports = () => {
                         <th>Name</th>
                         <th className="text-end">Kitta</th>
                         <th className="text-end">Amount</th>
-                        <th className="text-end">Intrest %</th>
+                        <th className="text-end">Interest %</th>
                         <th className="text-end">Int. Per Day</th>
                         <th className="text-end">Interest Pumori</th>
                         <th className="text-end">Tax</th>
@@ -480,6 +541,7 @@ const DividendSummaryReports = () => {
                         <thead>
                           <tr>
                             <th>Company Name</th>
+                            <th className="text-end">Distinct BOIDs</th>
                             <th className="text-end">Net Interest</th>
                           </tr>
                         </thead>
@@ -487,8 +549,17 @@ const DividendSummaryReports = () => {
                           {displayedCompanyRows.map((row, idx) => (
                             <tr key={idx}>
                               <td>
-                                <Button variant="link" className="p-0 text-start" onClick={() => handleCompanyClick(row.company)}>
+                                <Button variant="link" className="p-0 text-start summary-row-action" onClick={() => handleCompanyClick(row.company)}>
                                   {row.company}
+                                </Button>
+                              </td>
+                              <td className="text-end">
+                                <Button
+                                  variant="link"
+                                  className="p-0 summary-row-action summary-row-action-count"
+                                  onClick={() => handleCompanyClick(row.company)}
+                                >
+                                  {row.boidCount}
                                 </Button>
                               </td>
                               <td className="text-end">{formatCurrency(row.netInterest)}</td>
@@ -540,6 +611,7 @@ const DividendSummaryReports = () => {
               <thead>
                 <tr>
                   <th>Client Name</th>
+                  <th>BOID</th>
                   <th>Holder Type</th>
                   <th className="text-end">Shares Held</th>
                   <th className="text-end">Gross Dividend</th>
@@ -553,6 +625,7 @@ const DividendSummaryReports = () => {
                 {companyDetails.map((item, idx) => (
                   <tr key={idx}>
                     <td>{item.client_name}</td>
+                    <td>{item.client_boid || '-'}</td>
                     <td>{item.holder_type}</td>
                     <td className="text-end">{(item.shares_held || 0).toLocaleString('en-NP')}</td>
                     <td className="text-end">{formatCurrency(item.gross_dividend)}</td>

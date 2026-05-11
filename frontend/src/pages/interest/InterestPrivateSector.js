@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Card, Table, Alert } from 'react-bootstrap';
+import { Container, Card, Table } from 'react-bootstrap';
 import { FaChartBar, FaBuilding } from 'react-icons/fa';
 import NavigationBar from '../../components/NavigationBar';
 import DateRangeFilter from '../../components/DateRangeFilter';
-import { interestService, companyService } from '../../services/api';
-import { buildDateParams, formatCurrency, aggregateBy, normalizeList } from '../../utils/reportUtils';
+import { interestService, companyService, getApiErrorMessage } from '../../services/api';
+import { EmptyState, ErrorState, LoadingState } from '../../components/ui/AsyncState';
+import { buildDateParams, formatCurrency, normalizeList } from '../../utils/reportUtils';
 import '../../styles/dashboard.css';
 
 const InterestPrivateSector = () => {
@@ -12,15 +13,15 @@ const InterestPrivateSector = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [publicCompanies, setPublicCompanies] = useState([]);
+  const [privateCompanies, setPrivateCompanies] = useState([]);
 
   const fetchCompanies = async () => {
     try {
-      const response = await companyService.getAll({ sector_type: 'Public' });
+      const response = await companyService.getAll({ sector_type: 'Private' });
       const companies = normalizeList(response.data);
-      setPublicCompanies(companies.map(c => c.company_id ?? c.id));
+      setPrivateCompanies(companies.map(c => c.company_id ?? c.id));
     } catch (err) {
-      console.error('Failed to fetch public sector companies', err);
+      console.error('Failed to fetch private sector companies', err);
     }
   };
 
@@ -33,30 +34,51 @@ const InterestPrivateSector = () => {
       params.page_size = 1000;
       const response = await interestService.getAll(params);
       const items = normalizeList(response.data);
-      const filtered = items.filter(item => publicCompanies.includes(item.company));
-      const aggregated = aggregateBy(
-        filtered,
-        (item) => item.company_name,
-        (item) => item.net_payable
-      );
+      const filtered = items.filter(item => privateCompanies.includes(item.company));
+      const companyMap = new Map();
+      filtered.forEach((item) => {
+        const companyName = item.company_name || 'Unknown';
+        const amount = Number(item.net_payable || 0);
+        const boid = item.client_boid || '';
+
+        if (!companyMap.has(companyName)) {
+          companyMap.set(companyName, {
+            companyName,
+            total: amount,
+            boids: new Set(boid ? [boid] : []),
+          });
+        } else {
+          const current = companyMap.get(companyName);
+          current.total += amount;
+          if (boid) {
+            current.boids.add(boid);
+          }
+        }
+      });
+
+      const aggregated = Array.from(companyMap.values()).map((row) => ({
+        companyName: row.companyName,
+        total: row.total,
+        boidCount: row.boids.size,
+      }));
       setData(aggregated);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to fetch data');
+      setError(getApiErrorMessage(err, 'Failed to fetch data'));
       setData([]);
     } finally {
       setLoading(false);
     }
-  }, [publicCompanies]);
+  }, [privateCompanies]);
 
   useEffect(() => {
     fetchCompanies();
   }, []);
 
   useEffect(() => {
-    if (publicCompanies.length > 0) {
+    if (privateCompanies.length > 0) {
       fetchData(range);
     }
-  }, [range, publicCompanies, fetchData]);
+  }, [range, privateCompanies, fetchData]);
 
   const total = data.reduce((sum, row) => sum + row.total, 0);
   const rangeText = range.fromDate && range.toDate
@@ -68,7 +90,7 @@ const InterestPrivateSector = () => {
       <NavigationBar />
       <div className="dashboard-container">
         <Container fluid>
-          <h2 className="dashboard-header"><FaBuilding style={{ marginRight: '0.5rem' }} /> Debenture Interest Payable - Public Sector</h2>
+          <h2 className="dashboard-header"><FaBuilding style={{ marginRight: '0.5rem' }} /> Debenture Interest Payable - Private Sector</h2>
 
           <Card className="filter-card-modern">
             <Card.Body>
@@ -76,17 +98,12 @@ const InterestPrivateSector = () => {
             </Card.Body>
           </Card>
 
-          {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
+          {error && <ErrorState message={error} heading={null} className="mt-3" />}
           {loading ? (
-            <div className="loading-container-modern">
-              <div className="text-center">
-                <div className="loading-spinner-modern mx-auto mb-3"></div>
-                <p className="fs-5 text-muted">Loading report...</p>
-              </div>
-            </div>
+            <LoadingState message="Loading report..." />
           ) : (
             <Card className="chart-card-modern">
-              <Card.Header><FaChartBar style={{ marginRight: '0.5rem' }} /> {data.length} public sector companies ({rangeText})</Card.Header>
+              <Card.Header><FaChartBar style={{ marginRight: '0.5rem' }} /> {data.length} private sector companies ({rangeText})</Card.Header>
               <Card.Body>
                 {data.length > 0 ? (
                   <div className="table-responsive">
@@ -94,25 +111,28 @@ const InterestPrivateSector = () => {
                       <thead>
                         <tr>
                           <th>Company Name</th>
+                          <th className="text-center">Distinct BOIDs</th>
                           <th className="text-end">Total Amount (NPR)</th>
                         </tr>
                       </thead>
                       <tbody>
                         {data.map((row, idx) => (
                           <tr key={idx}>
-                            <td>{row.key}</td>
+                            <td>{row.companyName}</td>
+                            <td className="text-center">{row.boidCount}</td>
                             <td className="text-end">{formatCurrency(row.total)}</td>
                           </tr>
                         ))}
                         <tr className="table-active fw-bold">
                           <td>Grand Total</td>
+                          <td className="text-center">-</td>
                           <td className="text-end">{formatCurrency(total)}</td>
                         </tr>
                       </tbody>
                     </Table>
                   </div>
                 ) : (
-                  <p className="text-muted mb-0">No data found for the selected date range.</p>
+                  <EmptyState message="No data found for the selected date range." />
                 )}
               </Card.Body>
             </Card>

@@ -7,9 +7,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenRefreshView
 from apps.users.views import login_view
+from config.views import health_check
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/health/', health_check, name='health_check'),
     
     # JWT Authentication
     # Use project's custom login endpoint (returns JWT tokens)

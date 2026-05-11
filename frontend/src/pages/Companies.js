@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Table, Button, Form, Modal, Badge, Alert, Dropdown } from 'react-bootstrap';
-import { FaEdit, FaTrash, FaDownload, FaBuilding, FaChevronRight } from 'react-icons/fa';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Container, Row, Col, Card, Table, Button, Form, Modal, Badge, Alert, Dropdown, Pagination } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import { FaEdit, FaTrash, FaDownload, FaBuilding, FaChevronRight, FaUsers } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import NavigationBar from '../components/NavigationBar';
 import api from '../services/api';
@@ -8,6 +9,8 @@ import CustomSelect from '../components/CustomSelect';
 import '../styles/dashboard.css';
 
 const Companies = () => {
+  const DEFAULT_PAGE_SIZE = 50;
+  const navigate = useNavigate();
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -15,34 +18,61 @@ const Companies = () => {
   const [editMode, setEditMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSector, setFilterSector] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCompanies, setTotalCompanies] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [currentCompany, setCurrentCompany] = useState({
     company_code: '',
     company_name: '',
     sector_type: 'Private',
-    contact_person: '',
-    email: '',
-    phone: '',
-    address: ''
+    interest_tax_status: 'Taxable',
+    pan_no: '',
+    bank_name: '',
+    bank_account_no: '',
+    status: 'Active'
   });
 
-  useEffect(() => {
-    fetchCompanies();
-  }, []);
-
-  const fetchCompanies = async () => {
+  const fetchCompanies = useCallback(async () => {
     try {
-      const response = await api.get('/companies/');
-      setCompanies(Array.isArray(response.data) ? response.data : response.data.results || []);
+      const params = {
+        page: currentPage,
+        page_size: pageSize,
+      };
+      if (searchTerm.trim()) params.search = searchTerm.trim();
+      if (filterSector !== 'All') params.sector_type = filterSector;
+
+      const response = await api.get('/companies/', { params });
+      const payload = response.data;
+      if (Array.isArray(payload)) {
+        setCompanies(payload);
+        setTotalCompanies(payload.length);
+        setTotalPages(1);
+      } else {
+        setCompanies(payload.results || []);
+        setTotalCompanies(payload.count || 0);
+        setTotalPages(Math.max(1, Math.ceil((payload.count || 0) / pageSize)));
+      }
       setError(null);
     } catch (error) {
       console.error('Failed to fetch companies:', error);
       setError(`Error loading companies: ${error.message}`);
       toast.error('Failed to fetch companies');
       setCompanies([]);
+      setTotalCompanies(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, pageSize, searchTerm, filterSector]);
+
+  useEffect(() => {
+    fetchCompanies();
+  }, [fetchCompanies]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterSector, pageSize]);
 
   const handleShowModal = (company = null) => {
     if (company) {
@@ -53,10 +83,11 @@ const Companies = () => {
         company_code: '',
         company_name: '',
         sector_type: 'Private',
-        contact_person: '',
-        email: '',
-        phone: '',
-        address: ''
+        interest_tax_status: 'Taxable',
+        pan_no: '',
+        bank_name: '',
+        bank_account_no: '',
+        status: 'Active'
       });
       setEditMode(false);
     }
@@ -70,11 +101,22 @@ const Companies = () => {
 
   const handleSave = async () => {
     try {
+      const payload = {
+        company_code: currentCompany.company_code,
+        company_name: currentCompany.company_name,
+        sector_type: currentCompany.sector_type,
+        interest_tax_status: currentCompany.interest_tax_status || null,
+        pan_no: currentCompany.pan_no || null,
+        bank_name: currentCompany.bank_name || null,
+        bank_account_no: currentCompany.bank_account_no || null,
+        status: currentCompany.status || 'Active',
+      };
+
       if (editMode) {
-        await api.put(`/companies/${currentCompany.company_id}/`, currentCompany);
+        await api.put(`/companies/${currentCompany.company_id}/`, payload);
         toast.success('Company updated successfully');
       } else {
-        await api.post('/companies/', currentCompany);
+        await api.post('/companies/', payload);
         toast.success('Company created successfully');
       }
       fetchCompanies();
@@ -111,14 +153,25 @@ const Companies = () => {
     }
   };
 
-  const filteredCompanies = companies.filter(company => {
-    const name = (company.company_name || '').toLowerCase();
-    const code = (company.company_code || '').toLowerCase();
-    const term = searchTerm.toLowerCase();
-    const matchesSearch = name.includes(term) || code.includes(term);
-    const matchesSector = filterSector === 'All' || company.sector_type === filterSector;
-    return matchesSearch && matchesSector;
-  });
+  const renderPaginationItems = () => {
+    if (totalPages <= 1) return null;
+    const items = [];
+    const start = Math.max(1, currentPage - 2);
+    const end = Math.min(totalPages, currentPage + 2);
+
+    for (let page = start; page <= end; page += 1) {
+      items.push(
+        <Pagination.Item
+          key={page}
+          active={page === currentPage}
+          onClick={() => setCurrentPage(page)}
+        >
+          {page}
+        </Pagination.Item>
+      );
+    }
+    return items;
+  };
 
   if (loading) {
     return (
@@ -168,12 +221,12 @@ const Companies = () => {
                   type="text"
                   placeholder="Search by name or code..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                 />
               </Form.Group>
             </Col>
             <Col md={3} className="mb-2">
-              <Dropdown onSelect={(value) => setFilterSector(value)}>
+              <Dropdown onSelect={(value) => { setFilterSector(value); setCurrentPage(1); }}>
                 <Dropdown.Toggle 
                   variant="outline-primary" 
                   id="sector-filter-dropdown"
@@ -246,24 +299,6 @@ const Companies = () => {
                     Private
                   </Dropdown.Item>
                   <Dropdown.Item 
-                    eventKey="Tax-Exempted"
-                    active={filterSector === 'Tax-Exempted'}
-                    className="modern-dropdown-item"
-                    style={{
-                      backgroundColor: filterSector === 'Tax-Exempted' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
-                      background: filterSector === 'Tax-Exempted' ? 'linear-gradient(135deg, #ffd6ea, #ffc1e0)' : 'transparent',
-                      color: '#1e293b',
-                      fontWeight: filterSector === 'Tax-Exempted' ? '700' : '500',
-                      padding: '12px 16px',
-                      borderRadius: '8px',
-                      marginBottom: '4px',
-                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                      border: 'none'
-                    }}
-                  >
-                    Tax-Exempted
-                  </Dropdown.Item>
-                  <Dropdown.Item 
                     eventKey="Public"
                     active={filterSector === 'Public'}
                     className="modern-dropdown-item"
@@ -283,7 +318,20 @@ const Companies = () => {
                 </Dropdown.Menu>
               </Dropdown>
             </Col>
-            <Col md={5} className="text-end mb-2">
+            <Col md={2} className="mb-2">
+              <CustomSelect
+                options={[
+                  { value: 25, label: '25 / page' },
+                  { value: 50, label: '50 / page' },
+                  { value: 100, label: '100 / page' },
+                ]}
+                value={pageSize}
+                onChange={(value) => { setPageSize(Number(value)); setCurrentPage(1); }}
+                placeholder="Page size"
+                isSearchable={false}
+              />
+            </Col>
+            <Col md={3} className="text-end mb-2">
               <Button variant="primary" onClick={handleExport}>
                 <FaDownload /> Export
               </Button>
@@ -300,28 +348,29 @@ const Companies = () => {
                   <th>Code</th>
                   <th>Company Name</th>
                   <th>Sector</th>
-                  <th>Contact Person</th>
-                  <th>Email</th>
-                  <th>Phone</th>
+                  <th>Tax Status</th>
+                  <th>PAN</th>
+                  <th>Bank</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredCompanies.length === 0 ? (
+                {companies.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="text-center">No companies found</td>
+                    <td colSpan="7" className="text-center">No companies found</td>
                   </tr>
                 ) : (
-                  filteredCompanies.map(company => (
+                  companies.map(company => (
                     <tr key={company.company_id}>
                       <td><strong>{company.company_code}</strong></td>
                       <td>{company.company_name}</td>
                       <td><Badge bg={company.sector_type === 'Private' ? 'primary' : company.sector_type === 'Public' ? 'success' : 'info'}>{company.sector_type}</Badge></td>
-                      <td>{company.contact_person || '-'}</td>
-                      <td>{company.email || '-'}</td>
-                      <td>{company.phone || '-'}</td>
-                      <td>
-                        <Button size="sm" variant="outline-primary" className="me-2" onClick={() => handleShowModal(company)}>
+                      <td>{company.interest_tax_status || '-'}</td>
+                      <td>{company.pan_no || '-'}</td>
+                      <td>{company.bank_name || '-'}</td>
+                      <td>                        <Button size="sm" variant="outline-info" className="me-2" onClick={() => navigate(`/clients?company=${company.company_id}`)}>
+                          <FaUsers />
+                        </Button>                        <Button size="sm" variant="outline-primary" className="me-2" onClick={() => handleShowModal(company)}>
                           <FaEdit />
                         </Button>
                         <Button size="sm" variant="outline-danger" onClick={() => handleDelete(company.company_id)}>
@@ -333,6 +382,20 @@ const Companies = () => {
                 )}
               </tbody>
             </Table>
+              </div>
+              <div className="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+                <small className="text-muted">
+                  {totalCompanies === 0
+                    ? 'Showing 0 companies'
+                    : `Showing ${(currentPage - 1) * pageSize + 1}-${Math.min(currentPage * pageSize, totalCompanies)} of ${totalCompanies} companies`}
+                </small>
+                <Pagination className="mb-0 clients-pagination">
+                  <Pagination.First onClick={() => setCurrentPage(1)} disabled={currentPage === 1} />
+                  <Pagination.Prev onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1} />
+                  {renderPaginationItems()}
+                  <Pagination.Next onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages} />
+                  <Pagination.Last onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} />
+                </Pagination>
               </div>
             </Card.Body>
           </Card>
@@ -359,10 +422,34 @@ const Companies = () => {
                   <Form.Group className="mb-3">
                     <Form.Label>Sector Type *</Form.Label>
                     <CustomSelect
-                      options={[{ value: 'Private', label: 'Private' }, { value: 'Tax-Exempted', label: 'Tax-Exempted' }, { value: 'Public', label: 'Public' }]}
+                      options={[{ value: 'Private', label: 'Private' }, { value: 'Public', label: 'Public' }]}
                       value={currentCompany.sector_type}
                       onChange={(val) => setCurrentCompany({ ...currentCompany, sector_type: val })}
                       placeholder="Select Sector"
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+              <Row>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Interest Tax Status</Form.Label>
+                    <CustomSelect
+                      options={[{ value: 'Taxable', label: 'Taxable' }, { value: 'Exempted', label: 'Exempted' }]}
+                      value={currentCompany.interest_tax_status || ''}
+                      onChange={(val) => setCurrentCompany({ ...currentCompany, interest_tax_status: val })}
+                      placeholder="Select Tax Status"
+                    />
+                  </Form.Group>
+                </Col>
+                <Col md={6}>
+                  <Form.Group className="mb-3">
+                    <Form.Label>Status</Form.Label>
+                    <CustomSelect
+                      options={[{ value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' }]}
+                      value={currentCompany.status || 'Active'}
+                      onChange={(val) => setCurrentCompany({ ...currentCompany, status: val })}
+                      placeholder="Select Status"
                     />
                   </Form.Group>
                 </Col>
@@ -379,40 +466,31 @@ const Companies = () => {
               <Row>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Contact Person</Form.Label>
+                    <Form.Label>PAN No</Form.Label>
                     <Form.Control
                       type="text"
-                      value={currentCompany.contact_person}
-                      onChange={(e) => setCurrentCompany({ ...currentCompany, contact_person: e.target.value })}
+                      value={currentCompany.pan_no || ''}
+                      onChange={(e) => setCurrentCompany({ ...currentCompany, pan_no: e.target.value })}
                     />
                   </Form.Group>
                 </Col>
                 <Col md={6}>
                   <Form.Group className="mb-3">
-                    <Form.Label>Phone</Form.Label>
+                    <Form.Label>Bank Name</Form.Label>
                     <Form.Control
                       type="text"
-                      value={currentCompany.phone}
-                      onChange={(e) => setCurrentCompany({ ...currentCompany, phone: e.target.value })}
+                      value={currentCompany.bank_name || ''}
+                      onChange={(e) => setCurrentCompany({ ...currentCompany, bank_name: e.target.value })}
                     />
                   </Form.Group>
                 </Col>
               </Row>
               <Form.Group className="mb-3">
-                <Form.Label>Email</Form.Label>
+                <Form.Label>Bank Account No</Form.Label>
                 <Form.Control
-                  type="email"
-                  value={currentCompany.email}
-                  onChange={(e) => setCurrentCompany({ ...currentCompany, email: e.target.value })}
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Address</Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={2}
-                  value={currentCompany.address}
-                  onChange={(e) => setCurrentCompany({ ...currentCompany, address: e.target.value })}
+                  type="text"
+                  value={currentCompany.bank_account_no || ''}
+                  onChange={(e) => setCurrentCompany({ ...currentCompany, bank_account_no: e.target.value })}
                 />
               </Form.Group>
             </Form>

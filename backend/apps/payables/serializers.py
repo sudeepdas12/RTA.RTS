@@ -12,6 +12,7 @@ class InterestPayableSerializer(serializers.ModelSerializer):
     company_sector = serializers.CharField(source='company.sector_type', read_only=True)
     client_name = serializers.CharField(source='client.full_name', read_only=True)
     client_code = serializers.CharField(source='client.client_code', read_only=True)
+    client_boid = serializers.CharField(source='client.boid', read_only=True)
     fiscal_year = serializers.SerializerMethodField()
     
     class Meta:
@@ -49,6 +50,7 @@ class DividendPayableSerializer(serializers.ModelSerializer):
     company_sector = serializers.CharField(source='company.sector_type', read_only=True)
     client_name = serializers.CharField(source='client.full_name', read_only=True)
     client_code = serializers.CharField(source='client.client_code', read_only=True)
+    client_boid = serializers.CharField(source='client.boid', read_only=True)
     holder_type = serializers.CharField(source='client.holder_type', read_only=True)
     
     class Meta:

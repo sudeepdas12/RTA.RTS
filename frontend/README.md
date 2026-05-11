@@ -186,20 +186,6 @@ npm install
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 ```
 
-## End-to-end tests (Playwright)
-
-Run the visual/layout tests locally (these verify the navbar brand is left, controls are right, CSS variables exist, and dropdowns overlay):
-
-```bash
-# install dev dependencies and Playwright browsers
-npm install
-npm run install:browsers
-
-# run Playwright tests (headless)
-npm run test:e2e
-```
-
-> The Playwright runner will build the app and serve it locally on port 3000 before running tests.
 
 ## Development Tips
 

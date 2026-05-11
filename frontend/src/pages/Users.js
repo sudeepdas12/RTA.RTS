@@ -128,18 +128,30 @@ const Users = () => {
         return;
       }
 
+      const payload = {
+        username: currentUser.username,
+        full_name: currentUser.full_name,
+        email: currentUser.email || null,
+        role: currentUser.role_id || currentUser.role?.role_id || currentUser.role || null,
+        status: currentUser.status,
+      };
+
+      if (currentUser.password) {
+        payload.password = currentUser.password;
+      }
+
       if (editMode) {
-        await api.put(`/users/${currentUser.user_id}/`, currentUser);
+        await api.patch(`/users/${currentUser.user_id}/`, payload);
         toast.success('User updated successfully');
       } else {
-        await api.post('/users/', currentUser);
+        await api.post('/users/', payload);
         toast.success('User created successfully');
       }
       fetchUsers();
       fetchRecentChanges();
       handleCloseModal();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to save user');
+      toast.error(error.response?.data?.message || error.response?.data?.error || 'Failed to save user');
     }
   };
 
@@ -159,17 +171,17 @@ const Users = () => {
   const handlePromoteToAdmin = async (id) => {
     if (!window.confirm('Promote this user to Admin?')) return;
     try {
-      const adminRole = roles.find(r => r.role_name === 'Admin');
+      const adminRole = roles.find(r => (r.role_name || '').toLowerCase() === 'admin');
       if (!adminRole) {
         toast.error('Admin role not found. Please create an Admin role first.');
         return;
       }
-      await api.put(`/users/${id}/`, { role: adminRole.role_id });
+      await api.patch(`/users/${id}/`, { role: adminRole.role_id });
       toast.success('User promoted to Admin');
       fetchUsers();
       fetchRecentChanges();
     } catch (error) {
-      toast.error('Failed to promote user');
+      toast.error(error.response?.data?.message || error.response?.data?.error || 'Failed to promote user');
     }
   };
 
@@ -288,7 +300,7 @@ const Users = () => {
                             )}
 
                             {/* Promote to Admin (only visible to admin role) */}
-                            {currentUserAuth?.role === 'Admin' && user.role?.role_name !== 'Admin' && hasPermission('users', 'update') && (
+                            {String(currentUserAuth?.role || '').toLowerCase() === 'admin' && String(user.role?.role_name || '').toLowerCase() !== 'admin' && hasPermission('users', 'update') && (
                               <Button size="sm" variant="outline-success" className="ms-2" onClick={() => handlePromoteToAdmin(user.user_id)}>
                                 Promote to Admin
                               </Button>

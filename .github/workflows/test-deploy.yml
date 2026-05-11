@@ -1,0 +1,276 @@
+name: Test & Deploy
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ============================================================================
+  # BACKEND TESTS
+  # ============================================================================
+  backend-tests:
+    runs-on: ubuntu-latest
+    name: Backend Tests & Linting
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: rta_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+          pip install -r backend/requirements-dev.txt
+
+      - name: Run linting (flake8)
+        run: |
+          flake8 backend/apps/ backend/config/ --max-line-length=100
+
+      - name: Run pytest with coverage
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rta_test
+          DEBUG: 'False'
+          SECRET_KEY: test-secret-key
+        run: |
+          cd backend
+          python -m pytest tests/ --cov=apps --cov-report=xml --cov-report=html --cov-fail-under=60
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./backend/coverage.xml
+          flags: backend
+          fail_ci_if_error: false
+
+  # ============================================================================
+  # FRONTEND TESTS
+  # ============================================================================
+  frontend-tests:
+    runs-on: ubuntu-latest
+    name: Frontend Tests & Linting
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run linting (ESLint)
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Run tests with coverage
+        working-directory: frontend
+        env:
+          CI: true
+          REACT_APP_API_URL: http://localhost:8000/api
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./frontend/coverage/cobertura-coverage.xml
+          flags: frontend
+          fail_ci_if_error: false
+
+  # ============================================================================
+  # DOCKER BUILD & PUSH
+  # ============================================================================
+  docker-build:
+    needs: [backend-tests, frontend-tests]
+    runs-on: ubuntu-latest
+    name: Build & Push Docker Images
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      matrix:
+        service: [backend, frontend]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: ./${{ matrix.service }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ============================================================================
+  # SECURITY SCAN
+  # ============================================================================
+  security-scan:
+    runs-on: ubuntu-latest
+    name: Security Vulnerability Scan
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: '.'
+          format: sarif
+          output: trivy-results.sarif
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: trivy-results.sarif
+
+  # ============================================================================
+  # DEPLOYMENT TO STAGING
+  # ============================================================================
+  deploy-staging:
+    needs: [backend-tests, frontend-tests, docker-build]
+    runs-on: ubuntu-latest
+    name: Deploy to Staging
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    environment:
+      name: staging
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy with Docker Compose
+        env:
+          DOCKER_BUILDKIT: 1
+          DEPLOY_ENV: staging
+          API_URL: https://api-staging.example.com
+          FRONTEND_URL: https://staging.example.com
+        run: |
+          echo "Deploying to staging environment..."
+          # Example: Deploy to staging server via SSH and docker-compose
+          # ssh user@staging-server "cd /app && docker-compose pull && docker-compose up -d"
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests on staging..."
+          # Example: curl https://staging.example.com/health
+          # Example: npm run test:e2e -- --base-url=https://staging.example.com
+
+      - name: Notify deployment
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ Deployed to staging: https://staging.example.com'
+            })
+
+  # ============================================================================
+  # DEPLOYMENT TO PRODUCTION
+  # ============================================================================
+  deploy-production:
+    needs: [backend-tests, frontend-tests, docker-build]
+    runs-on: ubuntu-latest
+    name: Deploy to Production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://example.com
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy with Docker Compose
+        env:
+          DOCKER_BUILDKIT: 1
+          DEPLOY_ENV: production
+          API_URL: https://api.example.com
+          FRONTEND_URL: https://example.com
+        run: |
+          echo "Deploying to production environment..."
+          # Production deployment (typically to production server)
+          # ssh user@prod-server "cd /app && docker-compose pull && docker-compose up -d"
+
+      - name: Health check
+        run: |
+          echo "Running health checks..."
+          # Example: curl https://example.com/health
+          # Example: curl https://api.example.com/health
+
+      - name: Create release notes
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: release-${{ github.run_number }}
+          release_name: Release ${{ github.run_number }}
+          body: |
+            Production deployment completed.
+            Commit: ${{ github.sha }}
+            Triggered by: ${{ github.actor }}
+
+      - name: Notify team
+        uses: 8398a7/action-slack@v3
+        if: always()
+        with:
+          status: ${{ job.status }}
+          text: 'Production deployment ${{ job.status }}'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}

@@ -58,6 +58,7 @@ CREATE TABLE clients (
     client_id SERIAL PRIMARY KEY,
     client_code VARCHAR(20) UNIQUE NOT NULL,
     full_name VARCHAR(200) NOT NULL,
+    company_id INT REFERENCES companies(company_id) ON DELETE SET NULL,
     boid VARCHAR(50) UNIQUE,
     holder_type VARCHAR(50) CHECK (holder_type IN ('Public','Promoter','Institution')),
     pan_or_citizenship VARCHAR(50),
@@ -69,6 +70,7 @@ CREATE TABLE clients (
 );
 
 CREATE INDEX idx_clients_code ON clients(client_code);
+CREATE INDEX idx_clients_company ON clients(company_id);
 CREATE INDEX idx_clients_holder_type ON clients(holder_type);
 CREATE INDEX idx_clients_status ON clients(status);
 
@@ -109,6 +111,19 @@ CREATE TABLE interest_payables (
     company_id INT REFERENCES companies(company_id) ON DELETE CASCADE,
     client_id INT REFERENCES clients(client_id) ON DELETE CASCADE,
     instrument_ref VARCHAR(100),
+    allotted_quantity INT,
+    principal_amount NUMERIC(15,2),
+    interest_rate NUMERIC(5,2),
+    interest_per_day NUMERIC(10,4),
+    interest_pumori NUMERIC(15,2),
+    tax_rate NUMERIC(5,2),
+    tax_exempted BOOLEAN DEFAULT FALSE,
+    bank_code VARCHAR(20),
+    bank_name VARCHAR(100),
+    account_number VARCHAR(50),
+    lot VARCHAR(50),
+    approved_date DATE,
+    remarks TEXT,
     gross_interest NUMERIC(15,2) NOT NULL CHECK (gross_interest >= 0),
     tax_amount NUMERIC(15,2) NOT NULL DEFAULT 0 CHECK (tax_amount >= 0),
     net_payable NUMERIC(15,2) NOT NULL CHECK (net_payable >= 0),

@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
 from openpyxl import load_workbook
 import csv
@@ -12,11 +13,18 @@ from .serializers import CompanySerializer, CompanyUploadSerializer
 from apps.users.permissions import HasPermission
 
 
+class CompanyPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 500
+
+
 class CompanyViewSet(viewsets.ModelViewSet):
     """ViewSet for Company CRUD operations"""
     
     queryset = Company.objects.all()
     serializer_class = CompanySerializer
+    pagination_class = CompanyPagination
     permission_classes = [IsAuthenticated, HasPermission]
     required_permission = 'companies'
     

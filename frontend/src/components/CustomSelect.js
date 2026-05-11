@@ -4,11 +4,15 @@ import Select from 'react-select';
 const buildStyles = (isDarker = false) => ({
   control: (provided, state) => ({
     ...provided,
-    border: '1px solid rgba(136,96,208,0.08)',
+    border: state.isFocused ? '2px solid #8860D0' : '2px solid #cbd5e1',
     borderRadius: '12px',
-    boxShadow: state.isFocused ? '0 0 0 4px rgba(136,96,208,0.08)' : 'none',
+    boxShadow: state.isFocused ? '0 0 0 4px rgba(136,96,208,0.12)' : 'none',
     minHeight: '44px',
     background: '#fff',
+    transition: 'border-color 160ms ease, box-shadow 160ms ease',
+    '&:hover': {
+      borderColor: '#8860D0',
+    },
   }),
   placeholder: (provided) => ({ ...provided, color: '#6b7280', fontWeight: 500 }),
   singleValue: (provided) => ({ ...provided, color: '#1e293b', fontWeight: 500 }),
@@ -45,9 +49,18 @@ export default function CustomSelect(props) {
   // Accept both plain arrays of strings or objects
   const normalizedOptions = (options || []).map(opt => typeof opt === 'string' ? { value: opt, label: opt } : opt);
 
-  const normalizedValue = value === undefined || value === null || value === ''
-    ? null
-    : (typeof value === 'string' ? normalizedOptions.find(o => String(o.value) === String(value)) || { value, label: value } : value);
+  // react-select requires the `value` prop to be an object from the options array (or null).
+  // We need to support strings, numbers, or already-normalized objects.
+  let normalizedValue;
+  if (value === undefined || value === null || value === '') {
+    normalizedValue = null;
+  } else if (typeof value === 'object') {
+    // assume it's already a valid option object
+    normalizedValue = value;
+  } else {
+    // for primitive values (string, number, etc.) try to find a matching option
+    normalizedValue = normalizedOptions.find(o => String(o.value) === String(value)) || { value, label: String(value) };
+  }
 
   return (
     <Select
@@ -55,7 +68,9 @@ export default function CustomSelect(props) {
       value={normalizedValue}
       onChange={(opt) => onChange && onChange(opt ? opt.value : '')}
       placeholder={placeholder}
-      styles={buildStyles(isDarker)}
+      styles={{...buildStyles(isDarker), menuPortal: (provided) => ({ ...provided, zIndex: 120000 })}}
+      menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+      menuPosition="fixed"
       isDisabled={isDisabled}
       isSearchable={isSearchable !== false}
       isClearable={isClearable === true}

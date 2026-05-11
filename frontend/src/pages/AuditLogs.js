@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Table, Badge, Form, Alert, Dropdown, Pagination, Button } from 'react-bootstrap';
+import { Container, Row, Col, Card, Table, Badge, Alert, Dropdown, Pagination } from 'react-bootstrap';
 import { FaClipboardList, FaChevronRight } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import NavigationBar from '../components/NavigationBar';
+import DateRangeFilter from '../components/DateRangeFilter';
 import api from '../services/api';
 import '../styles/dashboard.css';
 
@@ -17,13 +18,15 @@ const AuditLogs = () => {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
-  const fetchLogs = React.useCallback(async (p = 1) => {
+  const fetchLogs = React.useCallback(async (p = 1, overrides = {}) => {
     setLoading(true);
     try {
       const params = { page: p, page_size: pageSize };
       if (filterAction && filterAction !== 'All') params.action = filterAction;
-      if (fromDate) params.from_date = fromDate;
-      if (toDate) params.to_date = toDate;
+      const from = overrides.fromDate !== undefined ? overrides.fromDate : fromDate;
+      const to = overrides.toDate !== undefined ? overrides.toDate : toDate;
+      if (from) params.from_date = from;
+      if (to) params.to_date = to;
 
       const response = await api.get('/audit/', { params });
       // Handle paginated or non-paginated responses
@@ -98,22 +101,13 @@ const AuditLogs = () => {
             <Col>
               <h2 className="dashboard-header"><FaClipboardList style={{ marginRight: '0.5rem' }} /> Audit Logs</h2>
             </Col>
-            <Col md={4} className="d-flex gap-2 justify-content-end">
-              <Form.Control
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                title="From date"
-                className="me-2"
+            <Col md={6} className="d-flex gap-2 justify-content-end align-items-center">
+              <DateRangeFilter
+                compact
+                initialFrom={fromDate}
+                initialTo={toDate}
+                onApply={({ fromDate: f, toDate: t }) => { setFromDate(f); setToDate(t); fetchLogs(1); }}
               />
-              <Form.Control
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                title="To date"
-                className="me-2"
-              />
-              <Button variant="outline-primary" onClick={() => fetchLogs(1)}>Filter</Button>
             </Col>
             <Col md={3} className="mt-3 mt-md-0">
               <Dropdown onSelect={(value) => { setFilterAction(value); }}>
@@ -192,9 +186,10 @@ const AuditLogs = () => {
             </Table>
               </div>
 
-              <div className="d-flex justify-content-between align-items-center mt-3">
-                <div>
-                  <small className="text-muted">Page {page} · {Math.ceil((totalCount || 0)/pageSize)} pages</small>
+              <div className="d-flex justify-content-between align-items-center mt-4">
+                <div className="page-info-section">
+                  <small className="text-muted">Page</small>
+                  <div><strong>{page}</strong> of <strong>{Math.ceil((totalCount || 0)/pageSize)}</strong> pages · <strong>{totalCount}</strong> total records</div>
                 </div>
                 <Pagination>
                   <Pagination.Prev disabled={page <= 1} onClick={() => { if (page > 1) fetchLogs(page - 1); }} />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Card, Alert, Button, Table, Modal } from 'react-bootstrap';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
@@ -6,12 +6,36 @@ import { FaDollarSign, FaFileInvoice, FaCheckCircle, FaClock, FaChartLine, FaCha
 import NavigationBar from '../../components/NavigationBar';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import { dividendService } from '../../services/api';
-import { buildDateParams, formatCurrency, normalizeList } from '../../utils/reportUtils';
+import { buildDateParams, formatCurrency } from '../../utils/reportUtils';
 import '../../styles/dashboard.css';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const DividendDashboard = () => {
+  const toNumber = (value) => {
+    const num = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(num) ? num : 0;
+  };
+
+  const fetchAllDividendItems = async (baseParams = {}) => {
+    const all = [];
+    let page = 1;
+    while (true) {
+      const response = await dividendService.getAll({ ...baseParams, page, page_size: 1000 });
+      const data = response?.data;
+      if (Array.isArray(data)) {
+        all.push(...data);
+        break;
+      }
+      const rows = Array.isArray(data?.results) ? data.results : [];
+      all.push(...rows);
+      if (!data?.next) break;
+      page += 1;
+      if (page > 500) break;
+    }
+    return all;
+  };
+
   const [range, setRange] = useState({ fromDate: '', toDate: '' });
   const [metrics, setMetrics] = useState({ total: 0, count: 0, paid: 0, pending: 0 });
   const [loading, setLoading] = useState(false);
@@ -24,18 +48,17 @@ const DividendDashboard = () => {
   const [exportingBreakdown, setExportingBreakdown] = useState(false);
   const [allDividendData, setAllDividendData] = useState([]);
 
-  const fetchData = async (dateRange) => {
+  const fetchData = useCallback(async (dateRange) => {
     setLoading(true);
     setError(null);
     try {
       const params = buildDateParams(dateRange);
-      const response = await dividendService.getAll(params);
-      const items = normalizeList(response.data);
-      const total = items.reduce((sum, item) => sum + (item.net_payable || 0), 0);
+      const items = await fetchAllDividendItems(params);
+      const total = items.reduce((sum, item) => sum + toNumber(item.net_payable), 0);
       const paid = items.filter(item => item.payment_status === 'Paid')
-        .reduce((sum, item) => sum + (item.net_payable || 0), 0);
+        .reduce((sum, item) => sum + toNumber(item.net_payable), 0);
       const pending = items.filter(item => item.payment_status === 'Pending')
-        .reduce((sum, item) => sum + (item.net_payable || 0), 0);
+        .reduce((sum, item) => sum + toNumber(item.net_payable), 0);
       setMetrics({
         total,
         count: items.length,
@@ -49,14 +72,14 @@ const DividendDashboard = () => {
         if (!companySummary[company]) {
           companySummary[company] = { kitta: 0, amount: 0, tax: 0, net: 0, paid: 0, pending: 0 };
         }
-        companySummary[company].kitta += item.shares_held || 0;
-        companySummary[company].amount += item.gross_dividend || 0;
-        companySummary[company].tax += item.tax_amount || 0;
-        companySummary[company].net += item.net_payable || 0;
+        companySummary[company].kitta += toNumber(item.shares_held);
+        companySummary[company].amount += toNumber(item.gross_dividend);
+        companySummary[company].tax += toNumber(item.tax_amount);
+        companySummary[company].net += toNumber(item.net_payable);
         if (item.payment_status === 'Paid') {
-          companySummary[company].paid += item.net_payable || 0;
+          companySummary[company].paid += toNumber(item.net_payable);
         } else if (item.payment_status === 'Pending') {
-          companySummary[company].pending += item.net_payable || 0;
+          companySummary[company].pending += toNumber(item.net_payable);
         }
       });
       const companyRows = Object.entries(companySummary)
@@ -74,11 +97,11 @@ const DividendDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData(range);
-  }, [range]);
+  }, [range, fetchData]);
 
 
   const handleCompanyClick = (companyName) => {
@@ -284,7 +307,7 @@ const DividendDashboard = () => {
                               <td>
                                 <Button
                                   variant="link"
-                                  className="p-0 text-start"
+                                  className="p-0 text-start table-action-text"
                                   onClick={() => handleCompanyClick(row.company)}
                                 >
                                   {row.company}

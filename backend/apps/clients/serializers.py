@@ -9,6 +9,9 @@ class ClientSerializer(serializers.ModelSerializer):
         model = Client
         fields = '__all__'
         read_only_fields = ('client_id', 'created_at', 'updated_at')
+
+    # include readable company name in response
+    company_name = serializers.CharField(source='company.company_name', read_only=True)
     
     def validate_client_code(self, value):
         """Validate client code is unique"""

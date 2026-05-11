@@ -14,6 +14,7 @@ env = environ.Env(
 
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
+os.makedirs(os.path.join(BASE_DIR, 'logs'), exist_ok=True)
 
 # Read .env file
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
@@ -22,9 +23,12 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = env('SECRET_KEY', default='django-insecure-change-this-in-production')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env('DEBUG', default=True)
+DEBUG = env('DEBUG', default=False)
 
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['*'])
+ALLOWED_HOSTS = env.list(
+    'ALLOWED_HOSTS',
+    default=['localhost', '127.0.0.1']
+)
 # Ensure Django test client host is allowed inside containers / test runs
 if 'testserver' not in ALLOWED_HOSTS:
     ALLOWED_HOSTS.append('testserver')
@@ -56,6 +60,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'config.middleware.RequestIDMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -149,7 +154,36 @@ REST_FRAMEWORK = {
         'rest_framework.filters.SearchFilter',
         'rest_framework.filters.OrderingFilter',
     ],
+    'EXCEPTION_HANDLER': 'config.exception_handler.custom_exception_handler',
+    'DEFAULT_THROTTLE_CLASSES': [
+        'config.throttles.AnonymousRateThrottle',
+        'config.throttles.UserRateThrottle',
+        'config.throttles.BurstRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': env('API_THROTTLE_ANON', default='100/minute'),
+        'user': env('API_THROTTLE_USER', default='1000/hour'),
+        'burst': env('API_THROTTLE_BURST', default='10/minute'),
+        'upload': env('API_THROTTLE_UPLOAD', default='10/minute'),
+        'export': env('API_THROTTLE_EXPORT', default='5/minute'),
+        'reconciliation': env('API_THROTTLE_RECON', default='3/minute'),
+        'admin': env('API_THROTTLE_ADMIN', default='5000/hour'),
+    },
 }
+
+# Security headers and cookies (env-driven for deployment flexibility)
+ENABLE_SECURITY_HEADERS = env.bool('ENABLE_SECURITY_HEADERS', default=not DEBUG)
+if ENABLE_SECURITY_HEADERS:
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    X_FRAME_OPTIONS = 'DENY'
+    SECURE_REFERRER_POLICY = 'same-origin'
+    SESSION_COOKIE_HTTPONLY = True
+    CSRF_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SECURE = env.bool('SESSION_COOKIE_SECURE', default=not DEBUG)
+    CSRF_COOKIE_SECURE = env.bool('CSRF_COOKIE_SECURE', default=not DEBUG)
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = env.bool('SECURE_SSL_REDIRECT', default=False)
 
 # JWT Configuration
 SIMPLE_JWT = {
@@ -182,31 +216,6 @@ CORS_ALLOW_CREDENTIALS = True
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
 
-# Logging Configuration
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'debug.log'),
-            'formatter': 'verbose',
-        },
-        'console': {
-            'level': 'INFO',
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-    },
-    'root': {
-        'handlers': ['console', 'file'],
-        'level': 'INFO',
-    },
-}
+# Logging Configuration - Import structured logging config
+from config.logging_config import get_logging_config
+LOGGING = get_logging_config(debug=DEBUG)

@@ -4,7 +4,7 @@ import { FaChartBar } from 'react-icons/fa';
 import NavigationBar from '../../components/NavigationBar';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import { interestService, clientService } from '../../services/api';
-import { buildDateParams, formatCurrency, aggregateBy, normalizeList } from '../../utils/reportUtils';
+import { buildDateParams, formatCurrency, normalizeList } from '../../utils/reportUtils';
 import '../../styles/dashboard.css';
 
 const InterestInstitution = () => {
@@ -34,11 +34,25 @@ const InterestInstitution = () => {
       const response = await interestService.getAll(params);
       const items = normalizeList(response.data);
       const filtered = items.filter(item => institutionClients.includes(item.client));
-      const aggregated = aggregateBy(
-        filtered,
-        (item) => item.client_name,
-        (item) => item.net_payable
-      );
+      const clientMap = new Map();
+      filtered.forEach((item) => {
+        const clientName = item.client_name || 'Unknown';
+        const boid = item.client_boid || '';
+        const key = boid || clientName;
+        const amount = Number(item.net_payable || 0);
+
+        if (!clientMap.has(key)) {
+          clientMap.set(key, {
+            clientName,
+            boid,
+            total: amount,
+          });
+        } else {
+          clientMap.get(key).total += amount;
+        }
+      });
+
+      const aggregated = Array.from(clientMap.values());
       setData(aggregated);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to fetch data');
@@ -94,18 +108,21 @@ const InterestInstitution = () => {
                       <thead>
                         <tr>
                           <th>Institution Name</th>
+                          <th>BOID</th>
                           <th className="text-end">Total Amount (NPR)</th>
                         </tr>
                       </thead>
                       <tbody>
                         {data.map((row, idx) => (
                           <tr key={idx}>
-                            <td>{row.key}</td>
+                            <td>{row.clientName}</td>
+                            <td>{row.boid || '-'}</td>
                             <td className="text-end">{formatCurrency(row.total)}</td>
                           </tr>
                         ))}
                         <tr className="table-active fw-bold">
                           <td>Grand Total</td>
+                          <td>-</td>
                           <td className="text-end">{formatCurrency(total)}</td>
                         </tr>
                       </tbody>

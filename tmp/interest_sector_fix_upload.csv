@@ -1,0 +1,3 @@
+company_code,client_code,instrument_ref,gross_interest,allotted_quantity,Amount,INT.@7%,INT. PER DAY,INTEREST-Pumori,tax_amount,TAX@15,due_date,payment_status,BANK CODE,BANK,ACCOUNT_NUMBER,LOT,APPROVED DATE,REMARKS
+C1,BG0009,SEC-FIX-PUB-001,175000,1200,2500000,7,480,175000,26250,15,2026-03-23,Pending,001,Nepal Bank,1234567890,A1,2026-03-16,Sector summary data fix public
+C2,CL001,SEC-FIX-PVT-001,126000,900,1800000,7,345,126000,18900,15,2026-03-30,Pending,002,NIC Asia,9876543210,B2,2026-03-17,Sector summary data fix private

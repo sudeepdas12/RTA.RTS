@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Card, Table, Alert } from 'react-bootstrap';
+import { Container, Card, Table } from 'react-bootstrap';
 import { FaChartBar, FaBuilding } from 'react-icons/fa';
 import NavigationBar from '../../components/NavigationBar';
 import DateRangeFilter from '../../components/DateRangeFilter';
-import { dividendService, companyService } from '../../services/api';
-import { buildDateParams, formatCurrency, aggregateBy, normalizeList } from '../../utils/reportUtils';
+import { dividendService, companyService, getApiErrorMessage } from '../../services/api';
+import { EmptyState, ErrorState, LoadingState } from '../../components/ui/AsyncState';
+import { buildDateParams, formatCurrency, normalizeList } from '../../utils/reportUtils';
 import '../../styles/dashboard.css';
 
 const DividendPublic = () => {
@@ -34,14 +35,35 @@ const DividendPublic = () => {
       const response = await dividendService.getAll(params);
       const items = normalizeList(response.data);
       const filtered = items.filter(item => publicCompanies.includes(item.company));
-      const aggregated = aggregateBy(
-        filtered,
-        (item) => item.company_name,
-        (item) => item.net_payable
-      );
+      const companyMap = new Map();
+      filtered.forEach((item) => {
+        const companyName = item.company_name || 'Unknown';
+        const amount = Number(item.net_payable || 0);
+        const boid = item.client_boid || '';
+
+        if (!companyMap.has(companyName)) {
+          companyMap.set(companyName, {
+            companyName,
+            total: amount,
+            boids: new Set(boid ? [boid] : []),
+          });
+        } else {
+          const current = companyMap.get(companyName);
+          current.total += amount;
+          if (boid) {
+            current.boids.add(boid);
+          }
+        }
+      });
+
+      const aggregated = Array.from(companyMap.values()).map((row) => ({
+        companyName: row.companyName,
+        total: row.total,
+        boidCount: row.boids.size,
+      }));
       setData(aggregated);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to fetch data');
+      setError(getApiErrorMessage(err, 'Failed to fetch data'));
       setData([]);
     } finally {
       setLoading(false);
@@ -74,14 +96,9 @@ const DividendPublic = () => {
               <DateRangeFilter onApply={setRange} />
             </Card.Body>
           </Card>
-          {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
+          {error && <ErrorState message={error} heading={null} className="mt-3" />}
           {loading ? (
-            <div className="loading-container-modern">
-              <div className="text-center">
-                <div className="loading-spinner-modern mx-auto mb-3"></div>
-                <p className="fs-5 text-muted">Loading dividend data...</p>
-              </div>
-            </div>
+            <LoadingState message="Loading dividend data..." />
           ) : (
             <Card className="chart-card-modern">
               <Card.Header><FaChartBar style={{ marginRight: '0.5rem' }} /> Public Sector Dividend Report</Card.Header>
@@ -95,25 +112,28 @@ const DividendPublic = () => {
                       <thead>
                       <tr>
                         <th>Company Name</th>
+                        <th className="text-center">Distinct BOIDs</th>
                         <th className="text-end">Total Amount (NPR)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {data.map((row, idx) => (
                         <tr key={idx}>
-                          <td>{row.key}</td>
+                          <td>{row.companyName}</td>
+                          <td className="text-center">{row.boidCount}</td>
                           <td className="text-end">{formatCurrency(row.total)}</td>
                         </tr>
                       ))}
                       <tr className="table-light fw-bold">
                         <td>Grand Total</td>
+                        <td className="text-center">-</td>
                         <td className="text-end">{formatCurrency(total)}</td>
                       </tr>
                     </tbody>
                   </Table>
                 </div>
               ) : (
-                <p className="text-muted mb-0">No data found for the selected date range.</p>
+                <EmptyState message="No data found for the selected date range." />
               )}
             </Card.Body>
           </Card>

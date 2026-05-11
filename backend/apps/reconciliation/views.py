@@ -197,6 +197,14 @@ class ReconciliationViewSet(viewsets.ModelViewSet):
         
         transactions = bank_stmt.transactions.all()
         matched = 0
+
+        # Track already reconciled source records to avoid duplicate matching of the same payable.
+        interest_already_linked_ids = set(
+            Reconciliation.objects.filter(source_type='Interest').values_list('source_id', flat=True)
+        )
+        dividend_already_linked_ids = set(
+            Reconciliation.objects.filter(source_type='Dividend').values_list('source_id', flat=True)
+        )
         
         for txn in transactions:
             # Skip if already reconciled
@@ -209,7 +217,7 @@ class ReconciliationViewSet(viewsets.ModelViewSet):
             interest_match = InterestPayable.objects.filter(
                 net_payable=amount,
                 payment_status='Pending'
-            ).first()
+            ).exclude(interest_id__in=interest_already_linked_ids).first()
             
             if interest_match:
                 user = getattr(request, 'user_obj', None) or request.user
@@ -221,6 +229,7 @@ class ReconciliationViewSet(viewsets.ModelViewSet):
                     recon_status='Matched',
                     reconciled_by=user
                 )
+                interest_already_linked_ids.add(interest_match.interest_id)
                 matched += 1
                 continue
             
@@ -228,7 +237,7 @@ class ReconciliationViewSet(viewsets.ModelViewSet):
             dividend_match = DividendPayable.objects.filter(
                 net_payable=amount,
                 payment_status='Pending'
-            ).first()
+            ).exclude(dividend_id__in=dividend_already_linked_ids).first()
             
             if dividend_match:
                 user = getattr(request, 'user_obj', None) or request.user
@@ -240,6 +249,7 @@ class ReconciliationViewSet(viewsets.ModelViewSet):
                     recon_status='Matched',
                     reconciled_by=user
                 )
+                dividend_already_linked_ids.add(dividend_match.dividend_id)
                 matched += 1
         
         return Response({

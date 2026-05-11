@@ -11,7 +11,7 @@ The RTA/RTS Debenture Interest & Stock Dividend Management System is a comprehen
 - **API**: Django REST Framework 3.14
 - **Database**: PostgreSQL 12+
 - **Authentication**: JWT (Simple JWT)
-- **File Processing**: pandas, openpyxl
+- **File Processing**: openpyxl (Excel), csv (standard library)
 - **Export**: xlsxwriter, reportlab, weasyprint
 
 ### Frontend Stack
@@ -26,7 +26,7 @@ The RTA/RTS Debenture Interest & Stock Dividend Management System is a comprehen
 ### Database
 - **RDBMS**: PostgreSQL
 - **Schema**: 10 main tables with proper indexing
-- **Views**: 3 materialized views for reporting
+- **Views**: 3 SQL views for reporting
 - **Triggers**: Auto-update timestamps
 - **Constraints**: Foreign keys, checks, unique constraints
 

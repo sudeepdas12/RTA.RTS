@@ -2,18 +2,25 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Q, Sum
-from openpyxl import load_workbook
-import csv
-from io import BytesIO, StringIO
-from datetime import datetime, date
+from rest_framework.request import Request
+from django.db.models import Q, Sum, QuerySet
+from io import BytesIO
+from datetime import date
+from typing import cast
 
 from .models import InterestPayable, DividendPayable
 from .serializers import (
     InterestPayableSerializer, DividendPayableSerializer, PayableUploadSerializer
 )
-from apps.companies.models import Company
-from apps.clients.models import Client
+from .upload_utils import (
+    load_upload_rows,
+    missing_columns,
+    normalize_payment_status,
+    parse_date,
+    resolve_client,
+    resolve_company,
+    to_float,
+)
 from apps.users.permissions import HasPermission
 
 
@@ -25,29 +32,33 @@ class InterestPayableViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, HasPermission]
     required_permission = 'interest_payables'
     
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet[InterestPayable]:
         """Filter interest payables"""
         queryset = InterestPayable.objects.select_related('company', 'client').all()
-        fiscal_year = self.request.query_params.get('fiscal_year')
+        request = cast(Request, self.request)
+        fiscal_year = request.query_params.get('fiscal_year')
         
         # Company filter
-        company_id = self.request.query_params.get('company', None)
+        company_id = request.query_params.get('company', None)
         if company_id:
             queryset = queryset.filter(company_id=company_id)
         
-        # Client filter
-        client_id = self.request.query_params.get('client', None)
+        # Client filter (by id) or BOID
+        client_id = request.query_params.get('client', None)
+        boid = request.query_params.get('boid', None)
         if client_id:
             queryset = queryset.filter(client_id=client_id)
+        if boid:
+            queryset = queryset.filter(client__boid__iexact=boid.strip())
         
         # Payment status filter
-        payment_status = self.request.query_params.get('payment_status', None)
+        payment_status = request.query_params.get('payment_status', None)
         if payment_status:
             queryset = queryset.filter(payment_status=payment_status)
         
         # Date range filter
-        from_date = self.request.query_params.get('from_date', None)
-        to_date = self.request.query_params.get('to_date', None)
+        from_date = request.query_params.get('from_date', None)
+        to_date = request.query_params.get('to_date', None)
         
         if from_date:
             queryset = queryset.filter(due_date__gte=from_date)
@@ -80,28 +91,19 @@ class InterestPayableViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
-        file = serializer.validated_data['file']
+        file = serializer.validated_data.get('file')
+        if file is None:
+            return Response({'error': 'file is required'}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            # Read file
-            data = []
-            if file.name.endswith('.csv'):
-                reader = csv.DictReader(StringIO(file.read().decode('utf-8')))
-                data = list(reader)
-            else:
-                wb = load_workbook(BytesIO(file.read()))
-                sheet = wb.active
-                headers = [cell.value for cell in sheet[1]]
-                for row in sheet.iter_rows(min_row=2, values_only=True):
-                    data.append(dict(zip(headers, row)))
+            data = load_upload_rows(file)
             
-            # Expected columns
-            required_cols = ['company_code', 'client_code', 'gross_interest', 'tax_amount', 'due_date']
+            # Expected columns; BOID or client_code must be present
+            required_cols = ['company_code', 'gross_interest', 'tax_amount', 'due_date']
             if not data:
                 return Response({'error': 'No data found in file'}, status=status.HTTP_400_BAD_REQUEST)
             
-            missing_cols = [col for col in required_cols if col not in data[0]]
-            
+            missing_cols = missing_columns(data, required_cols)
             if missing_cols:
                 return Response(
                     {'error': f'Missing required columns: {", ".join(missing_cols)}'},
@@ -115,38 +117,54 @@ class InterestPayableViewSet(viewsets.ModelViewSet):
             for index, row in enumerate(data):
                 try:
                     company_code = str(row['company_code']).strip().upper()
-                    client_code = str(row['client_code']).strip().upper()
-                    
-                    # Get company and client
-                    try:
-                        company = Company.objects.get(company_code=company_code)
-                    except Company.DoesNotExist:
-                        errors.append(f"Row {index + 2}: Company {company_code} not found")
+
+                    client = resolve_client(row, index, errors)
+                    if not client:
                         continue
-                    
-                    try:
-                        client = Client.objects.get(client_code=client_code)
-                    except Client.DoesNotExist:
-                        errors.append(f"Row {index + 2}: Client {client_code} not found")
+
+                    company = resolve_company(company_code, index, errors)
+                    if not company:
                         continue
-                    
-                    gross = float(row.get('gross_interest') or 0)
-                    tax = float(row.get('tax_amount') or 0)
+
+                    # compute gross/tax/net
+                    # gross may be provided under different column names
+                    gross_raw = row.get('gross_interest') or row.get('Amount') or row.get('INT.@7%') or 0
+                    gross = to_float(gross_raw)
+
+                    # tax_amount may be numeric or the string 'TAX EXEMPTED'
+                    tax_raw = row.get('tax_amount') or row.get('TAX') or row.get('TAX@15')
+                    tax_exempt_flag = False
+                    if isinstance(tax_raw, str) and 'EXEMPT' in tax_raw.upper():
+                        tax = 0.0
+                        tax_exempt_flag = True
+                    else:
+                        tax = to_float(tax_raw or 0)
+
                     net = gross - tax
+
+                    # optional public-sector/institution columns
+                    allotted_qty = row.get('allotted_quantity')
+                    principal = row.get('Amount') or row.get('principal_amount')
+                    rate = row.get('INT.@7%') or row.get('interest_rate')
+                    per_day = row.get('INT. PER DAY') or row.get('interest_per_day')
+                    pumori = row.get('INTEREST-Pumori') or row.get('interest_pumori')
+                    tax_rate_val = row.get('TAX@15') or row.get('tax_rate')
+                    bank_code = row.get('BANK CODE')
+                    bank = row.get('BANK')
+                    acct = row.get('ACCOUNT_NUMBER')
+                    lot = row.get('LOT')
+                    approved = row.get('APPROVED DATE')
+                    remarks = row.get('REMARKS')
+
+                    due_date = parse_date(row.get('due_date'))
+                    if due_date is None:
+                        errors.append(f"Row {index + 2}: Invalid due date format")
+                        continue
                     
-                    due_date_str = str(row['due_date'])
-                    try:
-                        due_date = datetime.strptime(due_date_str, '%Y-%m-%d').date()
-                    except ValueError:
-                        try:
-                            due_date = datetime.strptime(due_date_str, '%m/%d/%Y').date()
-                        except ValueError:
-                            errors.append(f"Row {index + 2}: Invalid due date format")
-                            continue
-                    
-                    payment_status = str(row.get('payment_status', '')).strip().title() or 'Pending'
-                    if payment_status not in valid_status:
-                        errors.append(f"Row {index + 2}: Invalid payment_status '{payment_status}'")
+                    payment_status = normalize_payment_status(row.get('payment_status'), valid_status)
+                    if payment_status is None:
+                        raw_status = str(row.get('payment_status', '')).strip() or 'Pending'
+                        errors.append(f"Row {index + 2}: Invalid payment_status '{raw_status}'")
                         continue
 
                     user = getattr(request, 'user_obj', None) or request.user
@@ -154,6 +172,20 @@ class InterestPayableViewSet(viewsets.ModelViewSet):
                         company=company,
                         client=client,
                         instrument_ref=str(row.get('instrument_ref', '')).strip() or None,
+                        # extras
+                        allotted_quantity=allotted_qty or None,
+                        principal_amount=to_float(principal) if principal else None,
+                        interest_rate=to_float(rate) if rate else None,
+                        interest_per_day=to_float(per_day) if per_day else None,
+                        interest_pumori=to_float(pumori) if pumori else None,
+                        tax_rate=to_float(tax_rate_val) if tax_rate_val else None,
+                        tax_exempted=tax_exempt_flag,
+                        bank_code=bank_code or None,
+                        bank_name=bank or None,
+                        account_number=acct or None,
+                        lot=lot or None,
+                        approved_date=parse_date(approved, formats=('%Y-%m-%d',)) if approved else None,
+                        remarks=str(remarks).strip() if remarks else None,
                         gross_interest=gross,
                         tax_amount=tax,
                         net_payable=net,
@@ -217,8 +249,10 @@ class InterestPayableViewSet(viewsets.ModelViewSet):
         worksheet = workbook.add_worksheet('Interest Payables')
         
         headers = [
-            'company_code', 'client_code', 'instrument_ref',
-            'gross_interest', 'tax_amount', 'due_date', 'payment_status'
+            'company_code', 'client_code', 'boid', 'instrument_ref',
+            'allotted_quantity', 'Amount', 'INT.@7%', 'INT. PER DAY', 'INTEREST-Pumori',
+            'TAX@15', 'tax_amount', 'tax_exempted', 'due_date', 'payment_status',
+            'BANK CODE', 'BANK', 'ACCOUNT_NUMBER', 'LOT', 'APPROVED DATE', 'REMARKS'
         ]
         
         header_format = workbook.add_format({'bold': True, 'bg_color': '#D9E1F2'})
@@ -226,8 +260,8 @@ class InterestPayableViewSet(viewsets.ModelViewSet):
             worksheet.write(0, col, header, header_format)
         
         sample_data = [
-            ['COMP001', 'CL001', 'BOND-2024-001', 50000, 7500, '2026-03-15', 'Pending'],
-            ['COMP002', 'CL002', 'DEB-2024-002', 100000, 15000, '2026-03-30', 'Paid'],
+            ['COMP001','CL001','BOID-CL001','BOND-2024-001',50,50000,7,9.59,709.59,10.29259,58324.67,False,'2025-07-18','Pending','0201','Rastriya Banijya Bank Ltd.','01430100003178001','SUCCESS','2025-07-18','Sample remark'],
+            ['COMP002','CL002','BOID-CL002','DEB-2024-002',200,200000,7,38.36,2838.36,51.46507,291635.42,True,'2025-07-18','Paid','0201','Rastriya Banijya Bank Ltd.','2460100000326001','SUCCESS','2025-07-18','Another remark'],
         ]
         
         for row_idx, row_data in enumerate(sample_data, start=1):
@@ -245,6 +279,112 @@ class InterestPayableViewSet(viewsets.ModelViewSet):
         
         return response
 
+    @action(detail=False, methods=['post'])
+    def bulk_update_status(self, request):
+        """Bulk update payment status for multiple interest payables"""
+        from django.db import transaction
+        
+        data = request.data
+        payload_ids = data.get('ids', [])
+        new_status = data.get('status')
+        
+        if not payload_ids or not new_status:
+            return Response(
+                {'error': 'ids and status are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if new_status not in ['Pending', 'Paid', 'Partial']:
+            return Response(
+                {'error': 'Invalid status'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            with transaction.atomic():
+                updated = InterestPayable.objects.filter(
+                    interest_id__in=payload_ids
+                ).update(payment_status=new_status)
+                
+                return Response({
+                    'success': True,
+                    'updated_count': updated,
+                    'message': f'{updated} interest payables updated'
+                })
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=False, methods=['post'])
+    def bulk_delete(self, request):
+        """Bulk delete interest payables"""
+        from django.db import transaction
+        
+        data = request.data
+        payload_ids = data.get('ids', [])
+        
+        if not payload_ids:
+            return Response(
+                {'error': 'ids are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            with transaction.atomic():
+                deleted_count, _ = InterestPayable.objects.filter(
+                    interest_id__in=payload_ids
+                ).delete()
+                
+                return Response({
+                    'success': True,
+                    'deleted_count': deleted_count,
+                    'message': f'{deleted_count} interest payables deleted'
+                })
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=False, methods=['post'])
+    def bulk_record_payment(self, request):
+        """Bulk record payment for multiple interest payables"""
+        from django.db import transaction
+        
+        data = request.data
+        payload_ids = data.get('ids', [])
+        payment_date = data.get('payment_date')
+        reference = data.get('reference', '')
+        
+        if not payload_ids or not payment_date:
+            return Response(
+                {'error': 'ids and payment_date are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            with transaction.atomic():
+                updated = InterestPayable.objects.filter(
+                    interest_id__in=payload_ids
+                ).update(
+                    payment_status='Paid',
+                    paid_date=payment_date,
+                    remarks=reference
+                )
+                
+                return Response({
+                    'success': True,
+                    'updated_count': updated,
+                    'message': f'Payment recorded for {updated} interest payables'
+                })
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 class DividendPayableViewSet(viewsets.ModelViewSet):
     """ViewSet for Dividend Payable CRUD operations"""
@@ -254,33 +394,37 @@ class DividendPayableViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, HasPermission]
     required_permission = 'dividend_payables'
     
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet[DividendPayable]:
         """Filter dividend payables"""
         queryset = DividendPayable.objects.select_related('company', 'client').all()
+        request = cast(Request, self.request)
         
         # Company filter
-        company_id = self.request.query_params.get('company', None)
+        company_id = request.query_params.get('company', None)
         if company_id:
             queryset = queryset.filter(company_id=company_id)
         
-        # Client filter
-        client_id = self.request.query_params.get('client', None)
+        # Client filter (by id) or BOID
+        client_id = request.query_params.get('client', None)
+        boid = request.query_params.get('boid', None)
         if client_id:
             queryset = queryset.filter(client_id=client_id)
+        if boid:
+            queryset = queryset.filter(client__boid__iexact=boid.strip())
         
         # Payment status filter
-        payment_status = self.request.query_params.get('payment_status', None)
+        payment_status = request.query_params.get('payment_status', None)
         if payment_status:
             queryset = queryset.filter(payment_status=payment_status)
         
         # Fiscal year filter
-        fiscal_year = self.request.query_params.get('fiscal_year', None)
+        fiscal_year = request.query_params.get('fiscal_year', None)
         if fiscal_year:
             queryset = queryset.filter(fiscal_year=fiscal_year)
 
         # Date range filter (created_at)
-        from_date = self.request.query_params.get('from_date', None)
-        to_date = self.request.query_params.get('to_date', None)
+        from_date = request.query_params.get('from_date', None)
+        to_date = request.query_params.get('to_date', None)
 
         if from_date:
             queryset = queryset.filter(created_at__date__gte=from_date)
@@ -302,27 +446,19 @@ class DividendPayableViewSet(viewsets.ModelViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
-        file = serializer.validated_data['file']
+        file = serializer.validated_data.get('file')
+        if file is None:
+            return Response({'error': 'file is required'}, status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            # Read file
-            data = []
-            if file.name.endswith('.csv'):
-                reader = csv.DictReader(StringIO(file.read().decode('utf-8')))
-                data = list(reader)
-            else:
-                wb = load_workbook(BytesIO(file.read()))
-                sheet = wb.active
-                headers = [cell.value for cell in sheet[1]]
-                for row in sheet.iter_rows(min_row=2, values_only=True):
-                    data.append(dict(zip(headers, row)))
+            data = load_upload_rows(file)
             
-            # Expected columns
-            required_cols = ['company_code', 'client_code', 'shares_held', 'gross_dividend', 'tax_amount']
+            # Expected columns; BOID or client_code must be present
+            required_cols = ['company_code', 'shares_held', 'gross_dividend', 'tax_amount']
             if not data:
                 return Response({'error': 'No data found in file'}, status=status.HTTP_400_BAD_REQUEST)
             
-            missing_cols = [col for col in required_cols if col not in data[0]]
+            missing_cols = missing_columns(data, required_cols)
             
             if missing_cols:
                 return Response(
@@ -337,29 +473,28 @@ class DividendPayableViewSet(viewsets.ModelViewSet):
             for index, row in enumerate(data):
                 try:
                     company_code = str(row['company_code']).strip().upper()
-                    client_code = str(row['client_code']).strip().upper()
-                    
-                    # Get company and client
-                    try:
-                        company = Company.objects.get(company_code=company_code)
-                    except Company.DoesNotExist:
-                        errors.append(f"Row {index + 2}: Company {company_code} not found")
+                    client = resolve_client(row, index, errors)
+                    if not client:
+                        continue
+
+                    company = resolve_company(company_code, index, errors)
+                    if not company:
                         continue
                     
-                    try:
-                        client = Client.objects.get(client_code=client_code)
-                    except Client.DoesNotExist:
-                        errors.append(f"Row {index + 2}: Client {client_code} not found")
-                        continue
-                    
-                    shares = float(row.get('shares_held') or 0)
-                    gross = float(row.get('gross_dividend') or 0)
-                    tax = float(row.get('tax_amount') or 0)
+                    shares = to_float(row.get('shares_held') or 0)
+                    gross = to_float(row.get('gross_dividend') or 0)
+                    # tax_amount may be numeric or the string 'TAX EXEMPTED'
+                    tax_raw = row.get('tax_amount') or row.get('TAX')
+                    if isinstance(tax_raw, str) and 'EXEMPT' in tax_raw.upper():
+                        tax = 0.0
+                    else:
+                        tax = to_float(tax_raw or 0)
                     net = gross - tax
 
-                    payment_status = str(row.get('payment_status', '')).strip().title() or 'Pending'
-                    if payment_status not in valid_status:
-                        errors.append(f"Row {index + 2}: Invalid payment_status '{payment_status}'")
+                    payment_status = normalize_payment_status(row.get('payment_status'), valid_status)
+                    if payment_status is None:
+                        raw_status = str(row.get('payment_status', '')).strip() or 'Pending'
+                        errors.append(f"Row {index + 2}: Invalid payment_status '{raw_status}'")
                         continue
                     
                     user = getattr(request, 'user_obj', None) or request.user
@@ -432,7 +567,7 @@ class DividendPayableViewSet(viewsets.ModelViewSet):
         worksheet = workbook.add_worksheet('Dividend Payables')
         
         headers = [
-            'company_code', 'client_code', 'shares_held',
+            'company_code', 'client_code', 'boid', 'shares_held',
             'gross_dividend', 'tax_amount', 'fiscal_year', 'payment_status'
         ]
         
@@ -441,8 +576,8 @@ class DividendPayableViewSet(viewsets.ModelViewSet):
             worksheet.write(0, col, header, header_format)
         
         sample_data = [
-            ['COMP001', 'CL001', 1000, 50000, 7500, '2080/81', 'Paid'],
-            ['COMP002', 'CL002', 2500, 125000, 18750, '2080/81', 'Pending'],
+            ['COMP001', 'CL001', 'BOID-CL001', 1000, 50000, 7500, '2080/81', 'Paid'],
+            ['COMP002', 'CL002', 'BOID-CL002', 2500, 125000, 18750, '2080/81', 'Pending'],
         ]
         
         for row_idx, row_data in enumerate(sample_data, start=1):
@@ -459,3 +594,109 @@ class DividendPayableViewSet(viewsets.ModelViewSet):
         response['Content-Disposition'] = 'attachment; filename=dividend_payables_template.xlsx'
         
         return response
+
+    @action(detail=False, methods=['post'])
+    def bulk_update_status(self, request):
+        """Bulk update payment status for multiple dividend payables"""
+        from django.db import transaction
+        
+        data = request.data
+        payload_ids = data.get('ids', [])
+        new_status = data.get('status')
+        
+        if not payload_ids or not new_status:
+            return Response(
+                {'error': 'ids and status are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        if new_status not in ['Pending', 'Paid', 'Partial']:
+            return Response(
+                {'error': 'Invalid status'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            with transaction.atomic():
+                updated = DividendPayable.objects.filter(
+                    dividend_id__in=payload_ids
+                ).update(payment_status=new_status)
+                
+                return Response({
+                    'success': True,
+                    'updated_count': updated,
+                    'message': f'{updated} dividend payables updated'
+                })
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=False, methods=['post'])
+    def bulk_delete(self, request):
+        """Bulk delete dividend payables"""
+        from django.db import transaction
+        
+        data = request.data
+        payload_ids = data.get('ids', [])
+        
+        if not payload_ids:
+            return Response(
+                {'error': 'ids are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            with transaction.atomic():
+                deleted_count, _ = DividendPayable.objects.filter(
+                    dividend_id__in=payload_ids
+                ).delete()
+                
+                return Response({
+                    'success': True,
+                    'deleted_count': deleted_count,
+                    'message': f'{deleted_count} dividend payables deleted'
+                })
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=False, methods=['post'])
+    def bulk_record_payment(self, request):
+        """Bulk record payment for multiple dividend payables"""
+        from django.db import transaction
+        
+        data = request.data
+        payload_ids = data.get('ids', [])
+        payment_date = data.get('payment_date')
+        reference = data.get('reference', '')
+        
+        if not payload_ids or not payment_date:
+            return Response(
+                {'error': 'ids and payment_date are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            with transaction.atomic():
+                updated = DividendPayable.objects.filter(
+                    dividend_id__in=payload_ids
+                ).update(
+                    payment_status='Paid',
+                    paid_date=payment_date,
+                    remarks=reference
+                )
+                
+                return Response({
+                    'success': True,
+                    'updated_count': updated,
+                    'message': f'Payment recorded for {updated} dividend payables'
+                })
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

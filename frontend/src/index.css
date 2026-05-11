@@ -94,6 +94,17 @@
   
   /* Focus Ring */
   --focus-ring: 0 0 0 3px rgba(136, 96, 208, 0.15), 0 0 0 1.5px rgba(136, 96, 208, 0.5);
+
+  /* Navbar tokens */
+  --nav-surface-primary: #7858c4;
+  --nav-surface-secondary: #a981ff;
+  --nav-grad-start: #6b46c1;
+  --nav-grad-mid: #8a63e6;
+  --nav-grad-end: #d6b8ff;
+  --nav-border: rgba(255, 255, 255, 0.32);
+  --nav-drop-shadow: 0 16px 38px rgba(66, 28, 150, 0.28);
+  --nav-inset-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --nav-text-color: #ffffff;
   
   /* Accent Color for native controls */
   accent-color: #8860D0;

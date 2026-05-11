@@ -14,6 +14,8 @@ const InterestSummaryReports = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [summaryRows, setSummaryRows] = useState([]);
+  const [sectorRows, setSectorRows] = useState([]);
+  const [sectorTotals, setSectorTotals] = useState({});
   const [companyBreakdown, setCompanyBreakdown] = useState([]);
   const [allCompanies, setAllCompanies] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,6 +24,7 @@ const InterestSummaryReports = () => {
   const [companyDetails, setCompanyDetails] = useState([]);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [exportingBreakdown, setExportingBreakdown] = useState(false);
+  const [exportingSector, setExportingSector] = useState(false);
   const [allInterestData, setAllInterestData] = useState([]);
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState('all');
   const [uniqueCompanies, setUniqueCompanies] = useState([]);
@@ -33,13 +36,25 @@ const InterestSummaryReports = () => {
     .replace('-', '/')
     .replace(/\s+/g, '');
 
+  const normalizeBoid = (value) => String(value || '').trim().toUpperCase();
+
   const fetchSummary = useCallback(async (dateRange) => {
     setLoading(true);
     setError(null);
     try {
       const params = buildDateParams(dateRange);
-      params.page_size = 1000;
-      const [interestResponse, publicCompaniesResponse, taxExemptCompaniesResponse, institutionClientsResponse] = await Promise.all([
+      params.page_size = 10000;
+      if (selectedFiscalYear) {
+        params.fiscal_year = selectedFiscalYear;
+      }
+
+      // fetch raw interest items and related reference lists
+      const [
+        interestResponse,
+        publicCompaniesResponse,
+        taxExemptCompaniesResponse,
+        institutionClientsResponse
+      ] = await Promise.all([
         interestService.getAll(params),
         companyService.getAll({ sector_type: 'Public', page_size: 1000 }),
         companyService.getAll({ interest_tax_status: 'Exempted', page_size: 1000 }),
@@ -47,20 +62,25 @@ const InterestSummaryReports = () => {
       ]);
 
       const items = normalizeList(interestResponse.data);
-      
+
       // Get unique companies for filter
+      // deduplicate company list and other reference sets
       const companies = [...new Set(items.map(item => item.company_name))].sort();
       setUniqueCompanies(companies);
-      
+
       const publicCompanyIds = new Set(normalizeList(publicCompaniesResponse.data).map(c => c.company_id ?? c.id));
       const taxExemptCompanyIds = new Set(normalizeList(taxExemptCompaniesResponse.data).map(c => c.company_id ?? c.id));
       const institutionClientIds = new Set(normalizeList(institutionClientsResponse.data).map(c => c.client_id ?? c.id));
 
-      const summarize = (filteredItems) => ({
-        count: filteredItems.length,
-        gross: filteredItems.reduce((sum, item) => sum + (item.gross_interest || 0), 0),
-        tax: filteredItems.reduce((sum, item) => sum + (item.tax_amount || 0), 0),
-        net: filteredItems.reduce((sum, item) => sum + (item.net_payable || 0), 0),
+      const toNum = (x) => {
+        const n = Number(x);
+        return isNaN(n) ? 0 : n;
+      };
+      const summarize = (itemsToSum) => ({
+        count: itemsToSum.length,
+        gross: itemsToSum.reduce((sum, item) => sum + toNum(item.gross_interest), 0),
+        tax: itemsToSum.reduce((sum, item) => sum + toNum(item.tax_amount), 0),
+        net: itemsToSum.reduce((sum, item) => sum + toNum(item.net_payable), 0),
       });
 
       // Filter by selected company + fiscal year
@@ -70,17 +90,74 @@ const InterestSummaryReports = () => {
         return byCompany && byFiscal;
       });
 
-      const publicSummary = summarize(filteredItems.filter(item => publicCompanyIds.has(item.company)));
-      const institutionSummary = summarize(filteredItems.filter(item => institutionClientIds.has(item.client)));
-      const taxExemptSummary = summarize(filteredItems.filter(item => taxExemptCompanyIds.has(item.company)));
+      const groupByType = {
+        Public: [],
+        Institution: [],
+        'Tax Exempted': [],
+        Other: [],
+      };
+
+      filteredItems.forEach((item) => {
+        if (taxExemptCompanyIds.has(item.company)) {
+          groupByType['Tax Exempted'].push(item);
+        } else if (institutionClientIds.has(item.client)) {
+          groupByType.Institution.push(item);
+        } else if (publicCompanyIds.has(item.company)) {
+          groupByType.Public.push(item);
+        } else {
+          groupByType.Other.push(item);
+        }
+      });
+
+      const publicSummary = summarize(groupByType.Public);
+      const institutionSummary = summarize(groupByType.Institution);
+      const taxExemptSummary = summarize(groupByType['Tax Exempted']);
+      const otherSummary = summarize(groupByType.Other);
       const totalSummary = summarize(filteredItems);
 
       setSummaryRows([
         { type: 'Public', ...publicSummary },
         { type: 'Institution', ...institutionSummary },
         { type: 'Tax Exempted', ...taxExemptSummary },
+        { type: 'Other', ...otherSummary },
         { type: 'Total', ...totalSummary, isTotal: true },
       ]);
+
+      const sectorMap = {};
+      filteredItems.forEach((item) => {
+        const sector = item.company_sector || '(none)';
+        if (!sectorMap[sector]) {
+          sectorMap[sector] = {
+            sector,
+            kitta: 0,
+            amount: 0,
+            gross: 0,
+            per_day: 0,
+            pumori: 0,
+            tax: 0,
+            net: 0,
+          };
+        }
+        sectorMap[sector].kitta += toNum(item.allotted_quantity);
+        sectorMap[sector].amount += toNum(item.principal_amount);
+        sectorMap[sector].gross += toNum(item.gross_interest);
+        sectorMap[sector].per_day += toNum(item.interest_per_day);
+        sectorMap[sector].pumori += toNum(item.interest_pumori);
+        sectorMap[sector].tax += toNum(item.tax_amount);
+        sectorMap[sector].net += toNum(item.net_payable);
+      });
+
+      const sectorRowsComputed = Object.values(sectorMap).sort((a, b) => b.net - a.net);
+      setSectorRows(sectorRowsComputed);
+      setSectorTotals({
+        kitta: sectorRowsComputed.reduce((sum, row) => sum + toNum(row.kitta), 0),
+        amount: sectorRowsComputed.reduce((sum, row) => sum + toNum(row.amount), 0),
+        gross: sectorRowsComputed.reduce((sum, row) => sum + toNum(row.gross), 0),
+        per_day: sectorRowsComputed.reduce((sum, row) => sum + toNum(row.per_day), 0),
+        pumori: sectorRowsComputed.reduce((sum, row) => sum + toNum(row.pumori), 0),
+        tax: sectorRowsComputed.reduce((sum, row) => sum + toNum(row.tax), 0),
+        net: sectorRowsComputed.reduce((sum, row) => sum + toNum(row.net), 0),
+      });
 
       // Sector summary removed per request
 
@@ -89,12 +166,16 @@ const InterestSummaryReports = () => {
       filteredItems.forEach(item => {
         const company = item.company_name || 'Unknown';
         if (!companySummary[company]) {
-          companySummary[company] = { count: 0, gross: 0, tax: 0, net: 0, paid: 0, pending: 0 };
+          companySummary[company] = { count: 0, gross: 0, tax: 0, net: 0, paid: 0, pending: 0, boids: new Set() };
         }
         companySummary[company].count++;
         companySummary[company].gross += item.gross_interest || 0;
         companySummary[company].tax += item.tax_amount || 0;
         companySummary[company].net += item.net_payable || 0;
+        const normalizedBoid = normalizeBoid(item.client_boid);
+        if (normalizedBoid) {
+          companySummary[company].boids.add(normalizedBoid);
+        }
         if (item.payment_status === 'Paid') {
           companySummary[company].paid += item.net_payable || 0;
         } else if (item.payment_status === 'Pending') {
@@ -102,15 +183,26 @@ const InterestSummaryReports = () => {
         }
       });
       const companyRows = Object.entries(companySummary)
-        .map(([name, data]) => ({ company: name, ...data }))
+        .map(([name, data]) => ({
+          company: name,
+          count: data.count,
+          gross: data.gross,
+          tax: data.tax,
+          net: data.net,
+          paid: data.paid,
+          pending: data.pending,
+          boidCount: data.boids.size,
+        }))
         .sort((a, b) => b.net - a.net);
       setCompanyBreakdown(companyRows);
       setAllCompanies(companyRows);
-      setAllInterestData(items);
+      // Keep details source aligned with active filters to avoid modal/count mismatch.
+      setAllInterestData(filteredItems);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to fetch summary data');
       setSummaryRows([]);
-      // sectorSummary cleared (removed)
+      setSectorRows([]);
+      setSectorTotals({});
       setCompanyBreakdown([]);
       setAllCompanies([]);
       setAllInterestData([]);
@@ -154,10 +246,11 @@ const InterestSummaryReports = () => {
     setExportingBreakdown(true);
     try {
       const csvContent = [
-        ['Company Name', 'Records', 'Gross Interest', 'Tax', 'Net Payable', 'Paid', 'Pending'],
+        ['Company Name', 'Records', 'Distinct BOIDs', 'Gross Interest', 'Tax', 'Net Payable', 'Paid', 'Pending'],
         ...allCompanies.map(row => [
           row.company,
           row.count,
+          row.boidCount,
           row.gross.toFixed(2),
           row.tax.toFixed(2),
           row.net.toFixed(2),
@@ -200,6 +293,33 @@ const InterestSummaryReports = () => {
       setError(err.response?.data?.detail || 'Failed to export report');
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleExportSector = async () => {
+    setExportingSector(true);
+    setError(null);
+    try {
+      const params = buildDateParams(range);
+      if (selectedFiscalYear) {
+        params.fiscal_year = selectedFiscalYear;
+      }
+      if (selectedCompanyFilter && selectedCompanyFilter !== 'all') {
+        params.company_name = selectedCompanyFilter;
+      }
+      const response = await reportService.exportSectorSummary(params);
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      const timestamp = new Date().toISOString().slice(0, 10);
+      link.setAttribute('download', `sector-summary-${timestamp}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Failed to export sector summary');
+    } finally {
+      setExportingSector(false);
     }
   };
 
@@ -313,7 +433,71 @@ const InterestSummaryReports = () => {
           </div>
         ) : (
           <>
-            {/* Debenture Interest Summary by Sector removed per request */}
+            {/* Sector-level aggregation card */}
+            <Card className="chart-card-modern summary-report-card">
+              <Card.Header>
+                <div className="d-flex justify-content-between align-items-center">
+                  <span><FaChartBar style={{ marginRight: '0.5rem' }} /> Interest Summary by Sector</span>
+                  <Button
+                    variant="success"
+                    size="sm"
+                    onClick={handleExportSector}
+                    disabled={exportingSector || sectorRows.length === 0}
+                  >
+                    {exportingSector ? 'Exporting...' : 'Export to Excel'}
+                  </Button>
+                </div>
+              </Card.Header>
+              <Card.Body>
+                <p className="text-muted small mb-3">
+                  Aggregated totals grouped by company sector type
+                </p>
+                <div className="table-responsive">
+                  <Table className="table-modern mb-0 summary-report-table">
+                    <thead>
+                      <tr>
+                        <th>Sector</th>
+                        <th className="text-end">Kitta</th>
+                        <th className="text-end">Amount</th>
+                        <th className="text-end">Gross Interest</th>
+                        <th className="text-end">Per Day</th>
+                        <th className="text-end">Pumori</th>
+                        <th className="text-end">Tax</th>
+                        <th className="text-end">Net</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sectorRows.map((row, idx) => (
+                        <tr key={idx}>
+                          <td>{row.sector || '(none)'}</td>
+                          <td className="text-end">{row.kitta}</td>
+                          <td className="text-end">{formatCurrency(row.amount)}</td>
+                          <td className="text-end">{formatCurrency(row.gross)}</td>
+                          <td className="text-end">{formatCurrency(row.per_day)}</td>
+                          <td className="text-end">{formatCurrency(row.pumori)}</td>
+                          <td className="text-end">{formatCurrency(row.tax)}</td>
+                          <td className="text-end">{formatCurrency(row.net)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    {sectorRows.length > 0 && (
+                      <tfoot>
+                        <tr className="table-active fw-bold">
+                          <td>TOTAL</td>
+                          <td className="text-end">{sectorTotals.kitta || 0}</td>
+                          <td className="text-end">{formatCurrency(sectorTotals.amount)}</td>
+                          <td className="text-end">{formatCurrency(sectorTotals.gross)}</td>
+                          <td className="text-end">{formatCurrency(sectorTotals.per_day)}</td>
+                          <td className="text-end">{formatCurrency(sectorTotals.pumori)}</td>
+                          <td className="text-end">{formatCurrency(sectorTotals.tax)}</td>
+                          <td className="text-end">{formatCurrency(sectorTotals.net)}</td>
+                        </tr>
+                      </tfoot>
+                    )}
+                  </Table>
+                </div>
+              </Card.Body>
+            </Card>
 
             <Card className="chart-card-modern summary-report-card">
               <Card.Header>
@@ -412,6 +596,7 @@ const InterestSummaryReports = () => {
                       <tr>
                         <th>Company Name</th>
                         <th className="text-end">Records</th>
+                        <th className="text-end">Distinct BOIDs</th>
                         <th className="text-end">Gross Interest</th>
                         <th className="text-end">Tax</th>
                         <th className="text-end">Net Payable</th>
@@ -425,13 +610,22 @@ const InterestSummaryReports = () => {
                           <td>
                             <Button
                               variant="link"
-                              className="p-0 text-start"
+                              className="p-0 text-start summary-row-action"
                               onClick={() => handleCompanyClick(row.company)}
                             >
                               {row.company}
                             </Button>
                           </td>
                           <td className="text-end">{row.count}</td>
+                          <td className="text-end">
+                            <Button
+                              variant="link"
+                              className="p-0 summary-row-action summary-row-action-count"
+                              onClick={() => handleCompanyClick(row.company)}
+                            >
+                              {row.boidCount}
+                            </Button>
+                          </td>
                           <td className="text-end">{formatCurrency(row.gross)}</td>
                           <td className="text-end">{formatCurrency(row.tax)}</td>
                           <td className="text-end">{formatCurrency(row.net)}</td>
@@ -458,20 +652,40 @@ const InterestSummaryReports = () => {
                 <thead>
                   <tr>
                     <th>Client Name</th>
+                    <th>BOID</th>
                     <th>Instrument Ref</th>
+                    <th>Allotted Qty</th>
+                    <th className="text-end">Principal</th>
+                    <th className="text-end">Rate</th>
+                    <th className="text-end">Per Day</th>
+                    <th className="text-end">Pumori</th>
                     <th className="text-end">Gross Interest</th>
+                    <th className="text-end">Tax Rate</th>
+                    <th>Tax Exempted</th>
                     <th className="text-end">Tax</th>
                     <th className="text-end">Net Payable</th>
                     <th>Payment Status</th>
                     <th>Due Date</th>
+                    <th>Bank</th>
+                    <th>Acct No</th>
+                    <th>Lot</th>
+                    <th>Approved</th>
                   </tr>
                 </thead>
                 <tbody>
                   {companyDetails.map((item, idx) => (
                     <tr key={idx}>
                       <td>{item.client_name}</td>
+                      <td>{item.client_boid || '-'}</td>
                       <td>{item.instrument_ref || 'N/A'}</td>
+                      <td>{item.allotted_quantity || '-'}</td>
+                      <td className="text-end">{item.principal_amount ? formatCurrency(item.principal_amount) : '-'}</td>
+                      <td className="text-end">{item.interest_rate || '-'}</td>
+                      <td className="text-end">{item.interest_per_day || '-'}</td>
+                      <td className="text-end">{item.interest_pumori ? formatCurrency(item.interest_pumori) : '-'}</td>
                       <td className="text-end">{formatCurrency(item.gross_interest)}</td>
+                      <td className="text-end">{item.tax_rate ? `${item.tax_rate}%` : '-'}</td>
+                      <td>{item.tax_exempted ? 'Yes' : 'No'}</td>
                       <td className="text-end">{formatCurrency(item.tax_amount)}</td>
                       <td className="text-end">{formatCurrency(item.net_payable)}</td>
                       <td>
@@ -480,7 +694,11 @@ const InterestSummaryReports = () => {
                         </span>
                       </td>
                       <td>{item.due_date}</td>
-                    </tr>
+                      <td>{item.bank_name || item.bank_code || '-'}</td>
+                      <td>{item.account_number || '-'}</td>
+                      <td>{item.lot || '-'}</td>
+                      <td>{item.approved_date || '-'}</td>
+                      <td>{item.remarks || '-'}</td>                    </tr>
                   ))}
                 </tbody>
               </Table>

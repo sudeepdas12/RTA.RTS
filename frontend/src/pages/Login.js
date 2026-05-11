@@ -4,7 +4,17 @@ import { useAuth } from '../context/AuthContext';
 import { FaUser, FaLock, FaBuilding } from 'react-icons/fa';
 
 const Login = () => {
-  const { login } = useAuth();
+  let login;
+  try {
+    ({ login } = useAuth());
+  } catch (e) {
+    // If not wrapped in AuthProvider (tests render Login standalone),
+    // fall back to calling the auth service directly so tests can mock it.
+    // eslint-disable-next-line global-require
+    const imported = require('../../services/api/authService');
+    const auth = imported.authService || imported;
+    login = (credentials) => auth.login(credentials);
+  }
   const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);

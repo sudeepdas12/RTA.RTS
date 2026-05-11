@@ -17,6 +17,25 @@ const InterestDashboard = () => {
     return Number.isFinite(num) ? num : 0;
   };
 
+  const fetchAllInterestItems = useCallback(async (baseParams = {}) => {
+    const all = [];
+    let page = 1;
+    while (true) {
+      const response = await interestService.getAll({ ...baseParams, page, page_size: 1000 });
+      const data = response?.data;
+      if (Array.isArray(data)) {
+        all.push(...data);
+        break;
+      }
+      const rows = Array.isArray(data?.results) ? data.results : [];
+      all.push(...rows);
+      if (!data?.next) break;
+      page += 1;
+      if (page > 500) break;
+    }
+    return all;
+  }, []);
+
   const [range, setRange] = useState({ fromDate: '', toDate: '' });
   const [metrics, setMetrics] = useState({ total: 0, count: 0, paid: 0, pending: 0 });
   const [summaryRows, setSummaryRows] = useState([]);
@@ -29,14 +48,13 @@ const InterestDashboard = () => {
     setError(null);
     try {
       const params = buildDateParams(dateRange);
-      params.page_size = 1000;
-      const [interestResponse, publicCompaniesResponse, taxExemptCompaniesResponse, institutionClientsResponse] = await Promise.all([
-        interestService.getAll(params),
+      const [items, publicCompaniesResponse, taxExemptCompaniesResponse, institutionClientsResponse] = await Promise.all([
+        fetchAllInterestItems(params),
         companyService.getAll({ sector_type: 'Public', page_size: 1000 }),
         companyService.getAll({ interest_tax_status: 'Exempted', page_size: 1000 }),
         clientService.getAll({ holder_type: 'Institution', page_size: 1000 }),
       ]);
-      const items = normalizeList(interestResponse.data);
+
       const total = items.reduce((sum, item) => sum + toNumber(item.net_payable), 0);
       const paid = items.filter(item => item.payment_status === 'Paid')
         .reduce((sum, item) => sum + toNumber(item.net_payable), 0);
@@ -60,9 +78,28 @@ const InterestDashboard = () => {
         net: filteredItems.reduce((sum, item) => sum + toNumber(item.net_payable), 0),
       });
 
-      const publicSummary = summarize(items.filter(item => publicCompanyIds.has(item.company)));
-      const institutionSummary = summarize(items.filter(item => institutionClientIds.has(item.client)));
-      const taxExemptSummary = summarize(items.filter(item => taxExemptCompanyIds.has(item.company)));
+      const groupByType = {
+        Public: [],
+        Institution: [],
+        'Tax Exempted': [],
+        Other: [],
+      };
+
+      items.forEach((item) => {
+        if (taxExemptCompanyIds.has(item.company)) {
+          groupByType['Tax Exempted'].push(item);
+        } else if (institutionClientIds.has(item.client)) {
+          groupByType.Institution.push(item);
+        } else if (publicCompanyIds.has(item.company)) {
+          groupByType.Public.push(item);
+        } else {
+          groupByType.Other.push(item);
+        }
+      });
+
+      const publicSummary = summarize(groupByType.Public);
+      const institutionSummary = summarize(groupByType.Institution);
+      const taxExemptSummary = summarize(groupByType['Tax Exempted']);
       const totalSummary = summarize(items);
 
       setSummaryRows([
@@ -96,10 +133,6 @@ const InterestDashboard = () => {
         .map(([name, data]) => ({ company: name, ...data }))
         .sort((a, b) => b.net - a.net);
       setAllCompanies(companyRows);
-      console.log('Interest data loaded - items count:', items.length);
-      console.log('Company summary:', companyRows.length, 'companies');
-      console.log('Top 10 companies:', companyRows.slice(0, 10));
-      console.log('Top 10 net values:', companyRows.slice(0, 10).map(r => ({ company: r.company, net: r.net })));
     } catch (err) {
       console.error('Error fetching interest data:', err);
       setError(err.response?.data?.detail || 'Failed to fetch data');
@@ -109,7 +142,7 @@ const InterestDashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchAllInterestItems]);
 
   useEffect(() => {
     fetchData(range);
@@ -119,11 +152,6 @@ const InterestDashboard = () => {
   const topCompanies = allCompanies.slice(0, 10);
   const topNetValues = topCompanies.map(row => toNumber(row.net));
   const hasTopNetValues = topNetValues.some(v => v > 0);
-
-  console.log('Pie chart - topCompanies count:', topCompanies.length);
-  console.log('Pie chart - topNetValues:', topNetValues);
-  console.log('Pie chart - hasTopNetValues:', hasTopNetValues);
-  console.log('Pie chart - allCompanies total:', allCompanies.length);
 
   const pieChartData = {
     labels: topCompanies.map(row => row.company),
@@ -250,7 +278,6 @@ const InterestDashboard = () => {
                   <Card className="chart-card-modern">
                     <Card.Header><FaMoneyBillWave style={{ marginRight: '0.5rem' }} /> Interest Distribution - Top 10 Companies</Card.Header>
                     <Card.Body className="chart-body-modern chart-body-large">
-                      {console.log('Rendering pie - topCompanies:', topCompanies.length, 'hasValues:', hasTopNetValues)}
                       {topCompanies.length > 0 && hasTopNetValues ? (
                         <Pie data={pieChartData} options={pieChartOptions} />
                       ) : (

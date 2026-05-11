@@ -108,6 +108,62 @@ Open an issue or ping the team with:
 
 ---
 
+## Operations: backup, restore, readiness
+
+### Database backup (host-side SQL dump)
+Run from repo root:
+```bash
+backup_db.bat
+```
+
+- Reads `DB_NAME` and `DB_USER` from `backend/.env`
+- Uses `docker compose exec -T db pg_dump ...`
+- Writes output to `backups/db_backup_YYYYMMDD_HHMMSS.sql`
+
+### Database restore
+Run from repo root with a dump file path:
+```bash
+restore_db.bat backups\db_backup_YYYYMMDD_HHMMSS.sql
+```
+
+For a full overwrite restore into an existing database, use:
+```bash
+restore_db.bat backups\db_backup_YYYYMMDD_HHMMSS.sql --clean
+```
+
+Safer wrapper (recommended for operators):
+```bash
+restore_db_safe.bat backups\db_backup_YYYYMMDD_HHMMSS.sql --clean
+```
+
+- Requires explicit `YES` confirmation before running destructive `--clean` restore
+- Delegates to `restore_db.bat` and preserves fail-fast SQL behavior
+
+- Reads `DB_NAME` and `DB_USER` from `backend/.env`
+- Uses `docker compose exec -T db psql ...`
+- Runs with `ON_ERROR_STOP=1` so SQL errors fail the script immediately
+
+### Deployment readiness check
+Run from backend container:
+```bash
+docker compose exec -T backend python manage.py deployment_readiness
+```
+
+Before running this for production, ensure these values in `backend/.env`:
+- `DEBUG=False`
+- `SECRET_KEY` is a strong random value (32+ chars)
+- `ALLOWED_HOSTS` includes only valid host/IP values you serve from
+
+Checks:
+- `DEBUG` disabled
+- `SECRET_KEY` minimum length
+- `ALLOWED_HOSTS` sanity
+- required DB env vars present
+- DB connectivity
+- unapplied migrations
+
+---
+
 ## Frontend CSS: verification & visual test
 If you changed navigation CSS, verify visually and with a quick test:
 

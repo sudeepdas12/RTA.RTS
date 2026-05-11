@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
 from django.db.models import Q
+from django.db.utils import ProgrammingError, OperationalError
 
 from .models import User, Role
 from .models import PendingUserChange
@@ -58,6 +59,10 @@ class UserViewSet(viewsets.ModelViewSet):
         
         return queryset
 
+    def update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return super().update(request, *args, **kwargs)
+
 
 class PendingUserChangeViewSet(viewsets.ModelViewSet):
     """ViewSet to submit and review pending user changes (maker-checker)"""
@@ -67,7 +72,11 @@ class PendingUserChangeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user_obj
+        user = getattr(self.request, 'user_obj', None) or self.request.user
+        try:
+            self.queryset.model.objects.exists()
+        except (ProgrammingError, OperationalError):
+            return self.queryset.none()
         # If user can approve users, show all pending requests; otherwise only show own requests
         if user.has_permission('users', 'approve') or (user.role and user.role.role_name == 'Admin'):
             return self.queryset
@@ -75,13 +84,13 @@ class PendingUserChangeViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
-        data['requested_by'] = request.user_obj.user_id
+        user_obj = getattr(request, 'user_obj', None) or request.user
+        data['requested_by'] = user_obj.user_id
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
 
         # Basic permission check: maker must have create/update/delete permission for users or be admin
         action = serializer.validated_data.get('action')
-        user_obj = request.user_obj
         required_action = 'create' if action == 'CREATE' else 'update' if action == 'UPDATE' else 'delete'
         if not (user_obj.has_permission('users', required_action) or (user_obj.role and user_obj.role.role_name == 'Admin')):
             return Response({'error': 'Insufficient permissions to request this action'}, status=status.HTTP_403_FORBIDDEN)
@@ -92,7 +101,7 @@ class PendingUserChangeViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
         pending = self.get_object()
-        user_obj = request.user_obj
+        user_obj = getattr(request, 'user_obj', None) or request.user
 
         # Authorize approver
         if not (user_obj.has_permission('users', 'approve') or (user_obj.role and user_obj.role.role_name == 'Admin')):
@@ -165,7 +174,7 @@ class PendingUserChangeViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
         pending = self.get_object()
-        user_obj = request.user_obj
+        user_obj = getattr(request, 'user_obj', None) or request.user
 
         if not (user_obj.has_permission('users', 'approve') or (user_obj.role and user_obj.role.role_name == 'Admin')):
             return Response({'error': 'Not authorized to reject'}, status=status.HTTP_403_FORBIDDEN)
@@ -197,14 +206,14 @@ class PendingUserChangeViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def profile(self, request):
         """Get current user profile"""
-        user_obj = request.user_obj
+        user_obj = getattr(request, 'user_obj', None) or request.user
         serializer = UserProfileSerializer(user_obj)
         return Response(serializer.data)
     
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
     def change_password(self, request):
         """Change current user password"""
-        user_obj = request.user_obj
+        user_obj = getattr(request, 'user_obj', None) or request.user
         serializer = ChangePasswordSerializer(data=request.data)
         
         if serializer.is_valid():

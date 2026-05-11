@@ -6,10 +6,13 @@ export const buildDateParams = (range) => {
 };
 
 export const formatCurrency = (value) => {
+  // guard against undefined, null, NaN, non-numeric values
+  let num = Number(value);
+  if (isNaN(num)) num = 0;
   const formatted = new Intl.NumberFormat('ne-NP', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value || 0);
+  }).format(num);
   return `रू ${formatted}`;
 };
 

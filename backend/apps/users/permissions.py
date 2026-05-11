@@ -1,5 +1,8 @@
 
 from rest_framework import permissions
+import logging
+
+logger = logging.getLogger(__name__)
 
 class HasPermission(permissions.BasePermission):
     """
@@ -12,6 +15,10 @@ class HasPermission(permissions.BasePermission):
         if not request.user or not request.user.is_authenticated:
             logger.warning(f"User not authenticated: {request.user}")
             return False
+
+        role_name = (getattr(getattr(request.user, 'role', None), 'role_name', '') or '').strip().lower()
+        if role_name and 'admin' in role_name:
+            return True
         
         # Get required permission from view
         required_permission = getattr(view, 'required_permission', None)
@@ -29,7 +36,6 @@ class HasPermission(permissions.BasePermission):
         }
         
         action = action_map.get(request.method, 'read')
-        
 
         # Check permission using the custom User model
         return request.user.has_permission(required_permission, action)

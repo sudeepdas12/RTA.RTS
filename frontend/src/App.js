@@ -4,6 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
+import './styles/core-ui.css';
 
 import { AuthProvider } from './context/AuthContext';
 import PrivateRoute from './components/PrivateRoute';
@@ -13,6 +14,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import InterestCompanyWise from './pages/interest/InterestCompanyWise';
 import InterestPrivateSector from './pages/interest/InterestPrivateSector';
+import InterestPublicSector from './pages/interest/InterestPublicSector';
 import InterestInstitution from './pages/interest/InterestInstitution';
 import InterestTaxExemptedSector from './pages/interest/InterestTaxExemptedSector';
 import InterestClientWise from './pages/interest/InterestClientWise';
@@ -34,7 +36,6 @@ import AuditLogs from './pages/AuditLogs';
 import Users from './pages/Users';
 import PendingApprovals from './pages/PendingApprovals';
 import Uploads from './pages/Uploads';
-import './App.css';
 
 function App() {
   return (
@@ -72,7 +73,7 @@ function App() {
               path="/interest/public-sector"
               element={
                 <PrivateRoute>
-                  <InterestPrivateSector />
+                  <InterestPublicSector />
                 </PrivateRoute>
               }
             />

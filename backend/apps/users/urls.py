@@ -4,8 +4,8 @@ from .views import UserViewSet, RoleViewSet, login_view, logout_view, PendingUse
 
 router = DefaultRouter()
 router.register(r'roles', RoleViewSet, basename='role')
-router.register(r'', UserViewSet, basename='user')
 router.register(r'pending-changes', PendingUserChangeViewSet, basename='pendingchanges')
+router.register(r'', UserViewSet, basename='user')
 
 urlpatterns = [
     path('login/', login_view, name='login'),

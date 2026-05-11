@@ -7,10 +7,10 @@ This folder contains curated CSV files that mirror the records provisioned by `p
 | File | Purpose | Key Columns |
 | --- | --- | --- |
 | companies_sample.csv | Master company register for telecom, hydropower, banking issuers. | company_code, company_name, sector_type, interest_tax_status, pan_no, bank_name, bank_account_no |
-| clients_sample.csv | Holder roster covering public, promoter, and institutional investors. | client_code, full_name, holder_type, pan_or_citizenship, bank_name, bank_account_no |
+| clients_sample.csv | Holder roster covering public, promoter, and institutional investors. | client_code, boid, full_name, holder_type, pan_or_citizenship, bank_name, bank_account_no |
 | fiscal_year_settings_sample.csv | Company-specific interest & tax rates per fiscal year for calculation. | Company Name, Fiscal Year, Interest Rate %, Tax Rate % |
-| interest_payables_sample.csv | Debenture/loan interest accruals with varied statuses. | company_code, client_code, instrument_ref, gross_interest, tax_amount, due_date (optional payment_status) |
-| dividend_payables_sample.csv | Stock dividend declarations across fiscal years 2080/81–2081/82. | company_code, client_code, shares_held, gross_dividend, tax_amount (optional fiscal_year, payment_status) |
+| interest_payables_sample.csv | Debenture/loan interest accruals with varied statuses, including public-sector details. | company_code, client_code (or boid), instrument_ref, allotted_quantity, Amount, INT.@7%, INT. PER DAY, INTEREST-Pumori, tax_amount, due_date (optional payment_status), plus BANK CODE/BANK/ACCOUNT_NUMBER/LOT/APPROVED DATE |
+| dividend_payables_sample.csv | Stock dividend declarations across fiscal years 2080/81–2081/82. | company_code, client_code (or boid), shares_held, gross_dividend, tax_amount (optional fiscal_year, payment_status) |
 | bank_statement_sample.csv | Nepal Bank transaction extract for reconciliation tests. | txn_date, reference_no, description, debit, credit, balance |
 
 ## How to Use
@@ -18,6 +18,8 @@ This folder contains curated CSV files that mirror the records provisioned by `p
 1. Run `docker compose up -d` (or start your virtualenv backend) and execute `python manage.py create_test_data` once to ensure reference companies/clients exist.
 2. Log into the frontend (`admin / admin123`) and open **Data Center ➜ Uploads**.
 3. Choose the relevant tab (Companies, Clients, Interest, Dividend, Reconciliation) and upload the matching CSV. Each file uses the same headers expected by the API upload endpoints.
+
+4. After uploading interest payables you can visit **Interest ➜ Summary Reports** and click "Interest Summary by Sector" to verify aggregated values; this mirrors the Summary workbook provided by RTS.
 4. Switch to Dashboard/Reports/Interest/Dividend/Reconciliation pages to confirm charts and tables show the new records.
 
 ### Tips

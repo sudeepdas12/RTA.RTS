@@ -4,7 +4,7 @@ import { FaChartBar } from 'react-icons/fa';
 import NavigationBar from '../../components/NavigationBar';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import { dividendService } from '../../services/api';
-import { buildDateParams, formatCurrency, aggregateBy, normalizeList } from '../../utils/reportUtils';
+import { buildDateParams, formatCurrency, normalizeList } from '../../utils/reportUtils';
 import '../../styles/dashboard.css';
 
 const DividendPromoter = () => {
@@ -21,11 +21,32 @@ const DividendPromoter = () => {
       const response = await dividendService.getAll(params);
       const items = normalizeList(response.data);
       const filtered = items.filter(item => item.holder_type === 'Promoter');
-      const aggregated = aggregateBy(
-        filtered,
-        (item) => item.company_name,
-        (item) => item.net_amount
-      );
+      const companyMap = new Map();
+      filtered.forEach((item) => {
+        const companyName = item.company_name || 'Unknown';
+        const amount = Number(item.net_payable || 0);
+        const boid = item.client_boid || '';
+
+        if (!companyMap.has(companyName)) {
+          companyMap.set(companyName, {
+            companyName,
+            total: amount,
+            boids: new Set(boid ? [boid] : []),
+          });
+        } else {
+          const current = companyMap.get(companyName);
+          current.total += amount;
+          if (boid) {
+            current.boids.add(boid);
+          }
+        }
+      });
+
+      const aggregated = Array.from(companyMap.values()).map((row) => ({
+        companyName: row.companyName,
+        total: row.total,
+        boidCount: row.boids.size,
+      }));
       setData(aggregated);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to fetch data');
@@ -76,18 +97,21 @@ const DividendPromoter = () => {
                       <thead>
                       <tr>
                         <th>Company Name</th>
+                        <th className="text-center">Distinct BOIDs</th>
                         <th className="text-end">Total Amount (NPR)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {data.map((row, idx) => (
                         <tr key={idx}>
-                          <td>{row.key}</td>
+                          <td>{row.companyName}</td>
+                          <td className="text-center">{row.boidCount}</td>
                           <td className="text-end">{formatCurrency(row.total)}</td>
                         </tr>
                       ))}
                       <tr className="table-light fw-bold">
                         <td>Grand Total</td>
+                        <td className="text-center">-</td>
                         <td className="text-end">{formatCurrency(total)}</td>
                       </tr>
                     </tbody>

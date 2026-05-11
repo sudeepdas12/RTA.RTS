@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Container, Row, Col, Card, Button, Form, Tabs, Tab, Alert, Table, Badge, Modal } from 'react-bootstrap';
 import { FaUpload, FaDownload, FaPlus, FaEdit, FaTrash, FaDatabase } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import { format, parseISO } from 'date-fns';
 import NavigationBar from '../components/NavigationBar';
 import api, { settingsService, companyService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import CustomSelect from '../components/CustomSelect';
+import AppDatePicker from '../components/AppDatePicker';
 import '../styles/dashboard.css';
 
 const Uploads = () => {
@@ -752,7 +754,7 @@ const Uploads = () => {
                           <Form.Text className="text-muted">Selected: {uploadFiles.interest.name}</Form.Text>
                         )}
                         <Form.Text className="text-muted">
-                          Required columns: company_code, client_code, gross_interest, tax_amount, due_date. Optional: payment_status
+                          Required columns: company_code, gross_interest, tax_amount, due_date. Each row must include either <code>client_code</code> or <code>boid</code>. Optional columns include <code>instrument_ref</code>, <code>allotted_quantity</code>, <code>Amount</code>, <code>INT.@7%</code>, <code>INT. PER DAY</code>, <code>INTEREST-Pumori</code>, <code>BANK CODE</code>, <code>BANK</code>, <code>ACCOUNT_NUMBER</code>, <code>LOT</code>, <code>APPROVED DATE</code> and <code>payment_status</code>.
                         </Form.Text>
                       </Form.Group>
                       <div className="d-flex gap-2">
@@ -792,7 +794,7 @@ const Uploads = () => {
                           <Form.Text className="text-muted">Selected: {uploadFiles.dividend.name}</Form.Text>
                         )}
                         <Form.Text className="text-muted">
-                          Required columns: company_code, client_code, shares_held, gross_dividend, tax_amount. Optional: fiscal_year, payment_status
+                          Required columns: company_code, shares_held, gross_dividend, tax_amount. Each row must include either <code>client_code</code> or <code>boid</code>. Optional: fiscal_year, payment_status
                         </Form.Text>
                       </Form.Group>
                       <div className="d-flex gap-2">
@@ -856,18 +858,24 @@ const Uploads = () => {
                         </Col>
                         <Col md={6}>
                           <Form.Label>Statement From</Form.Label>
-                          <Form.Control
-                            type="date"
-                            value={reconForm.statement_from}
-                            onChange={(e) => setReconForm({ ...reconForm, statement_from: e.target.value })}
+                          <AppDatePicker
+                            selected={reconForm.statement_from ? parseISO(reconForm.statement_from) : null}
+                            onChange={(d) => setReconForm({ ...reconForm, statement_from: d ? format(d, 'yyyy-MM-dd') : '' })}
+                            className="form-control"
+                            dateFormat="yyyy-MM-dd"
+                            isClearable
+                            placeholderText="Statement From"
                           />
                         </Col>
                         <Col md={6}>
                           <Form.Label>Statement To</Form.Label>
-                          <Form.Control
-                            type="date"
-                            value={reconForm.statement_to}
-                            onChange={(e) => setReconForm({ ...reconForm, statement_to: e.target.value })}
+                          <AppDatePicker
+                            selected={reconForm.statement_to ? parseISO(reconForm.statement_to) : null}
+                            onChange={(d) => setReconForm({ ...reconForm, statement_to: d ? format(d, 'yyyy-MM-dd') : '' })}
+                            className="form-control"
+                            dateFormat="yyyy-MM-dd"
+                            isClearable
+                            placeholderText="Statement To"
                           />
                         </Col>
                       </Row>
@@ -1003,7 +1011,7 @@ const Uploads = () => {
           </Tab>
         </Tabs>
 
-        <Modal show={showFiscalModal} onHide={() => setShowFiscalModal(false)}>
+        <Modal show={showFiscalModal} onHide={() => setShowFiscalModal(false)} enforceFocus={false}>
           <Modal.Header closeButton>
             <Modal.Title>{editingFiscal ? 'Edit' : 'Add'} Fiscal Year Setting</Modal.Title>
           </Modal.Header>

@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { authService } from '../services/api';
+import { authService, getApiErrorMessage } from '../services/api';
 import { toast } from 'react-toastify';
 // Lightweight JWT decode helper (avoid bundler default/import issues)
 const jwtDecode = (token) => {
@@ -14,6 +14,55 @@ const jwtDecode = (token) => {
 };
 
 const AuthContext = createContext(null);
+
+const ROLE_FALLBACK_PERMISSIONS = {
+  admin: {
+    all: ['read', 'create', 'update', 'delete', 'approve'],
+  },
+  'finance operator': {
+    interest_payables: ['read', 'create', 'update'],
+    dividend_payables: ['read', 'create', 'update'],
+    reconciliation: ['read', 'create', 'update'],
+    reports: ['read'],
+    companies: ['read'],
+    clients: ['read'],
+    uploads: ['read', 'create'],
+  },
+  'reconciliation officer': {
+    reconciliation: ['read', 'create', 'update'],
+    reports: ['read'],
+    companies: ['read'],
+    clients: ['read'],
+  },
+  auditor: {
+    audit: ['read'],
+    reports: ['read'],
+    companies: ['read'],
+    clients: ['read'],
+    interest_payables: ['read'],
+    dividend_payables: ['read'],
+    reconciliation: ['read'],
+  },
+  'report viewer': {
+    reports: ['read'],
+    companies: ['read'],
+    clients: ['read'],
+    interest_payables: ['read'],
+    dividend_payables: ['read'],
+    reconciliation: ['read'],
+  },
+};
+
+const CORE_NAV_READ_RESOURCES = new Set([
+  'interest_payables',
+  'dividend_payables',
+  'reconciliation',
+  'companies',
+  'clients',
+  'reports',
+  'audit',
+  'users',
+]);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -70,7 +119,7 @@ export const AuthProvider = ({ children }) => {
       toast.success(`Welcome back, ${userData.full_name || userData.username}!`);
       navigate('/dashboard');
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Login failed');
+      toast.error(getApiErrorMessage(error, 'Login failed'));
       throw error;
     }
   };
@@ -94,12 +143,38 @@ export const AuthProvider = ({ children }) => {
   };
 
   const hasPermission = (resource, action = 'read') => {
-    if (!user || !user.permissions) return false;
+    if (!user) return false;
 
-    const permissions = user.permissions[resource];
-    if (!permissions) return false;
+    const roleName = (user.role || '').toString().trim().toLowerCase();
+    if (roleName === 'admin') {
+      return true;
+    }
 
-    return permissions.includes(action);
+    const permissionsMap = user.permissions;
+    if (permissionsMap && typeof permissionsMap === 'object') {
+      const resourcePerms = permissionsMap[resource];
+      if (Array.isArray(resourcePerms) && resourcePerms.includes(action)) {
+        return true;
+      }
+    }
+
+    const roleFallback = ROLE_FALLBACK_PERMISSIONS[roleName];
+    if (!roleFallback) return false;
+
+    if (Array.isArray(roleFallback.all) && roleFallback.all.includes(action)) {
+      return true;
+    }
+
+    const fallbackPerms = roleFallback[resource];
+    if (Array.isArray(fallbackPerms) && fallbackPerms.includes(action)) {
+      return true;
+    }
+
+    if (action === 'read' && CORE_NAV_READ_RESOURCES.has(resource) && !!user.role) {
+      return true;
+    }
+
+    return false;
   };
 
   const value = {

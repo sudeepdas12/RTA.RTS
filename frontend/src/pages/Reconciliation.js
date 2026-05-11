@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Table, Button, Badge, Tab, Tabs, Alert } from 'react-bootstrap';
+import { Container, Row, Col, Card, Table, Button, Badge, Tab, Tabs } from 'react-bootstrap';
 import { FaUpload, FaCheckCircle, FaTimesCircle, FaSyncAlt, FaUniversity, FaFileAlt } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import NavigationBar from '../components/NavigationBar';
-import api from '../services/api';
+import api, { getApiErrorMessage } from '../services/api';
+import { ErrorState, LoadingState } from '../components/ui/AsyncState';
 import '../styles/dashboard.css';
 
 const Reconciliation = () => {
@@ -25,8 +26,9 @@ const Reconciliation = () => {
       setError(null);
     } catch (error) {
       console.error('Failed to fetch bank statements:', error);
-      setError(`Error loading statements: ${error.message}`);
-      toast.error('Failed to fetch bank statements');
+      const message = getApiErrorMessage(error, 'Failed to fetch bank statements');
+      setError(`Error loading statements: ${message}`);
+      toast.error(message);
       setStatements([]);
     } finally {
       setLoading(false);
@@ -58,7 +60,7 @@ const Reconciliation = () => {
       fetchStatements();
       fetchTransactions();
     } catch (error) {
-      toast.error('Failed to upload bank statement');
+      toast.error(getApiErrorMessage(error, 'Failed to upload bank statement'));
     }
   };
 
@@ -68,7 +70,7 @@ const Reconciliation = () => {
       toast.success('Auto-matching completed');
       fetchTransactions();
     } catch (error) {
-      toast.error('Auto-matching failed');
+      toast.error(getApiErrorMessage(error, 'Auto-matching failed'));
     }
   };
 
@@ -76,12 +78,7 @@ const Reconciliation = () => {
     return (
       <>
         <NavigationBar />
-        <div className="loading-container-modern">
-          <div className="text-center">
-            <div className="loading-spinner-modern mx-auto mb-3"></div>
-            <p className="fs-5 text-muted">Loading reconciliation data...</p>
-          </div>
-        </div>
+        <LoadingState message="Loading reconciliation data..." />
       </>
     );
   }
@@ -92,10 +89,7 @@ const Reconciliation = () => {
         <NavigationBar />
         <div className="dashboard-container">
           <Container fluid>
-            <Alert variant="danger" className="mt-4">
-              <Alert.Heading>Error Loading Data</Alert.Heading>
-              <p className="mb-0">{error}</p>
-            </Alert>
+            <ErrorState message={error} className="mt-4" />
           </Container>
         </div>
       </>

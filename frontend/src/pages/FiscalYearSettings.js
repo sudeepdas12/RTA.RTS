@@ -15,7 +15,7 @@ const FiscalYearSettings = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({
-    company: '',
+    company: '', // will hold either an id or an {value,label} option
     fiscal_year: '',
     interest_rate: 7.0,
     tax_rate: 0.0,
@@ -52,11 +52,30 @@ const FiscalYearSettings = () => {
     fetchCompanies();
   }, []);
 
+  // when editing an existing record we may open the modal before the
+  // company list has finished loading. once companies arrive, ensure the
+  // stored company value becomes the matching option object so the select
+  // shows the proper label instead of just the raw id.
+  useEffect(() => {
+    if (editingItem && companies.length > 0) {
+      const opt = companies.find((c) => c.company_id === editingItem.company);
+      if (opt) {
+        setFormData((prev) => ({
+          ...prev,
+          company: { value: opt.company_id, label: opt.company_name },
+        }));
+      }
+    }
+  }, [companies, editingItem]);
+
   const handleShowModal = (item = null) => {
     if (item) {
       setEditingItem(item);
+      // pre‑populate company as an option object so react-select shows the
+      // label immediately even if companies list loads later
+      const companyOption = companies.find(c => c.company_id === item.company);
       setFormData({
-        company: item.company,
+        company: companyOption ? { value: companyOption.company_id, label: companyOption.company_name } : item.company,
         fiscal_year: item.fiscal_year,
         interest_rate: item.interest_rate,
         tax_rate: item.tax_rate,
@@ -88,11 +107,17 @@ const FiscalYearSettings = () => {
     setSuccess(null);
 
     try {
+      // payload expects primitive id for company; our state may hold an option
+      const payload = { ...formData };
+      if (payload.company && typeof payload.company === 'object') {
+        payload.company = payload.company.value;
+      }
+
       if (editingItem) {
-        await settingsService.updateFiscalYear(editingItem.id, formData);
+        await settingsService.updateFiscalYear(editingItem.id, payload);
         setSuccess('Fiscal year updated successfully');
       } else {
-        await settingsService.createFiscalYear(formData);
+        await settingsService.createFiscalYear(payload);
         setSuccess('Fiscal year created successfully');
       }
       fetchFiscalYears();
@@ -225,7 +250,7 @@ const FiscalYearSettings = () => {
       </div>
 
         {/* Add/Edit Modal */}
-        <Modal show={showModal} onHide={handleCloseModal}>
+        <Modal show={showModal} onHide={handleCloseModal} enforceFocus={false}>
           <Modal.Header closeButton>
             <Modal.Title>{editingItem ? 'Edit Fiscal Year' : 'Add Fiscal Year'}</Modal.Title>
           </Modal.Header>
@@ -234,13 +259,18 @@ const FiscalYearSettings = () => {
               <Form.Group className="mb-3">
                 <Form.Label>Company *</Form.Label>
                 <CustomSelect
-                  isDisabled={companyLoading || !!editingItem}
+                  isDisabled={companyLoading}
                   options={companies.map((c) => ({ value: c.company_id, label: c.company_name }))}
                   value={formData.company}
-                  onChange={(val) => setFormData({ ...formData, company: val })}
+                  onChange={(opt) => setFormData({ ...formData, company: opt })}
                   placeholder={companyLoading ? 'Loading companies...' : 'Select Company'}
                   isSearchable
                 />
+                {editingItem && (
+                  <Form.Text className="text-muted">
+                    Company cannot be changed once created.
+                  </Form.Text>
+                )}
               </Form.Group>
 
               <Form.Group className="mb-3">

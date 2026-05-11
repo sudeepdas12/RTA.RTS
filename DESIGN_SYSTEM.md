@@ -23,9 +23,9 @@ A comprehensive, modern UI design system inspired by Stripe, Linear, Vercel, Not
 - **Secondary Border**: `#cbd5e1` - Hover/focus borders
 
 ### Primary Accent
-- **Color Primary**: `#4f46e5` - Indigo primary
-- **Color Primary Dark**: `#4338ca` - Indigo dark
-- **Color Primary Light**: `#e0e7ff` - Indigo light
+- **Color Primary**: `#8860D0` - Primary purple
+- **Color Primary Dark**: `#7654bf` - Primary dark
+- **Color Primary Light**: `#f3f0ff` - Primary light
 
 ### Semantic Colors
 - **Success**: `#10b981` - Green
@@ -245,9 +245,11 @@ Refined shadow system for depth and hierarchy:
 ## Implementation Files
 
 ### CSS Files
-- **index.css**: Design tokens and typography
-- **App.css**: Component styling (buttons, cards, tables, forms, modals)
+- **index.css**: Design tokens and typography (source of truth for shared tokens)
+- **styles/core-ui.css**: Core reusable primitives (buttons, tables)
+- **App.css**: Global and feature styling (cards, forms, modals, utility styles)
 - **dashboard.css**: Dashboard-specific styling
+- **components/NavigationBar.css**: Navbar-specific styling using shared nav tokens
 
 ### Design Tokens (CSS Variables)
 All design tokens are defined in `:root` in `index.css` for easy customization and consistency.

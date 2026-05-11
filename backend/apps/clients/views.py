@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
 from openpyxl import load_workbook
 import csv
@@ -9,7 +10,14 @@ from io import BytesIO, StringIO
 
 from .models import Client
 from .serializers import ClientSerializer, ClientUploadSerializer
+from apps.companies.models import Company
 from apps.users.permissions import HasPermission
+
+
+class ClientPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'page_size'
+    max_page_size = 500
 
 
 class ClientViewSet(viewsets.ModelViewSet):
@@ -17,6 +25,7 @@ class ClientViewSet(viewsets.ModelViewSet):
     
     queryset = Client.objects.all()
     serializer_class = ClientSerializer
+    pagination_class = ClientPagination
     permission_classes = [IsAuthenticated, HasPermission]
     required_permission = 'clients'
     
@@ -43,6 +52,11 @@ class ClientViewSet(viewsets.ModelViewSet):
         holder_type = self.request.query_params.get('holder_type', None)
         if holder_type:
             queryset = queryset.filter(holder_type=holder_type)
+
+        # Company filter (by id)
+        company = self.request.query_params.get('company', None)
+        if company:
+            queryset = queryset.filter(company_id=company)
         
         return queryset
     
@@ -72,7 +86,7 @@ class ClientViewSet(viewsets.ModelViewSet):
             # Expected columns (BOID is required)
             expected_columns = [
                 'client_code', 'full_name', 'boid', 'holder_type',
-                'pan_or_citizenship', 'bank_name', 'bank_account_no'
+                'company', 'pan_or_citizenship', 'bank_name', 'bank_account_no'
             ]
             
             if not data:
@@ -110,6 +124,15 @@ class ClientViewSet(viewsets.ModelViewSet):
                         'bank_name': str(row.get('bank_name', '')).strip() or None,
                         'bank_account_no': str(row.get('bank_account_no', '')).strip() or None,
                     }
+                    # handle company if provided (code or name)
+                    company_val = str(row.get('company', '')).strip()
+                    if company_val:
+                        comp = Company.objects.filter(
+                            Q(company_code__iexact=company_val) |
+                            Q(company_name__iexact=company_val)
+                        ).first()
+                        if comp:
+                            client_data['company'] = comp
                     
                     # Update or create
                     client, created_flag = Client.objects.update_or_create(
@@ -160,7 +183,7 @@ class ClientViewSet(viewsets.ModelViewSet):
         # Headers (include BOID)
         headers = [
             'client_code', 'full_name', 'boid', 'holder_type',
-            'pan_or_citizenship', 'bank_name', 'bank_account_no'
+            'company', 'pan_or_citizenship', 'bank_name', 'bank_account_no'
         ]
         
         # Write headers
@@ -170,8 +193,8 @@ class ClientViewSet(viewsets.ModelViewSet):
         
         # Sample data (include BOID sample)
         sample_data = [
-            ['CL001', 'Ram Kumar Shrestha', 'BOID-CL001', 'Public', '12345678', 'NIC Asia Bank', '1234567890123'],
-            ['CL002', 'ABC Investment Pvt. Ltd', 'BOID-CL002', 'Institution', '987654321', 'Standard Chartered', '9876543210987'],
+            ['CL001', 'Ram Kumar Shrestha', 'BOID-CL001', 'Public', 'COMP001', '12345678', 'NIC Asia Bank', '1234567890123'],
+            ['CL002', 'ABC Investment Pvt. Ltd', 'BOID-CL002', 'Institution', 'COMP002', '987654321', 'Standard Chartered', '9876543210987'],
         ]
         
         for row_idx, row_data in enumerate(sample_data, start=1):

@@ -5,7 +5,7 @@ A comprehensive LAN-based web application for managing Debenture Interest Payabl
 ## 📋 Features
 
 - **Multi-user Access**: Role-based permissions (Admin, Finance Operator, Reconciliation Officer, Auditor, Report Viewer)
-- **Master Data Management**: Companies and Clients with import/export functionality
+- **Master Data Management**: Companies and Clients with import/export functionality (BOID field supported and visible in client-wise reports)
 - **Payables Management**: Interest and Dividend payables tracking
 - **Bank Reconciliation**: Auto-matching and manual reconciliation of bank transactions
 - **Comprehensive Reporting**: Dashboard with charts, Excel/PDF exports
@@ -108,6 +108,17 @@ python manage.py runserver
 
 Backend will run at: `http://localhost:8000`
 
+### Backend Environment Highlights
+
+The backend now supports production-safe defaults and observability controls:
+
+- `DEBUG` (default: `False`)
+- `ALLOWED_HOSTS` (default: `localhost,127.0.0.1`)
+- `ENABLE_SECURITY_HEADERS` (default: `True` when `DEBUG=False`)
+- `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `SECURE_SSL_REDIRECT`
+- `API_THROTTLE_ANON` (default: `100/minute`)
+- `API_THROTTLE_USER` (default: `1000/hour`)
+
 ### 3. Frontend Setup
 
 ```bash
@@ -170,6 +181,11 @@ Frontend will run at: `http://localhost:3000`
 POST /api/auth/login/          # Login
 POST /api/auth/refresh/        # Refresh token
 POST /api/users/logout/        # Logout
+```
+
+### System Health
+```
+GET  /api/health/              # Liveness/readiness + DB connectivity
 ```
 
 ### Companies
@@ -253,13 +269,13 @@ CL001      | John Doe     | Public      | 12345678          | ABC Bank  | 123456
 
 ### Interest Payable Upload (Excel/CSV)
 ```
-company_code | client_code | instrument_ref | gross_interest | tax_amount | due_date
+company_code | client_code (or BOID) | instrument_ref | gross_interest | tax_amount | due_date
 COMP001     | CL001       | DEB001        | 100000        | 5000      | 2026-03-31
 ```
 
 ### Dividend Payable Upload (Excel/CSV)
 ```
-company_code | client_code | shares_held | gross_dividend | tax_amount | fiscal_year
+company_code | client_code (or BOID) | shares_held | gross_dividend | tax_amount | fiscal_year
 COMP001     | CL001       | 1000       | 50000         | 2500      | 2080/81
 ```
 
@@ -398,14 +414,19 @@ Quick start (recommended):
 ```bash
 # from project root
 cp backend/.env.sample backend/.env    # provide secrets if needed
-# then run the one-line starter (preferred)
-start.bat    # or start_project.bat
+# then run one starter:
+start.bat                     # interactive (opens browser, includes pause)
+start_project_dist.bat        # non-interactive for distribution/CI/installer
 ```
 
 Notes:
 - `start.bat` is a simple alias that calls `start_project.bat`. The starter prefers Docker Compose when available and falls back to local starts.
+- `start_project_dist.bat` is safe for packaging/distribution automation: no prompt/pause and clean exit codes.
 - If you prefer to run services manually, see the "Backend Setup" and "Frontend Setup" sections above.
 
+Manual equivalent:
+
+```bash
 docker compose up --build
 # backend: http://localhost:8000
 # frontend: http://localhost:3000
