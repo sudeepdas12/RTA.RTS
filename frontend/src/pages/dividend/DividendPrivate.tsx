@@ -162,7 +162,7 @@ const DividendPrivate: React.FC = () => {
               <FaChartBar style={{ marginRight: '0.5rem' }} /> Private Sector Payables ({processedData.length})
             </Card.Header>
             <Card.Body className="p-0">
-              <DataTable<DividendSectorData>
+              <DataTable
                 data={processedData}
                 columns={columns}
                 totalRows={processedData.length}

@@ -24,6 +24,8 @@ export {
   dividendService,
   reconciliationService,
   reportService,
+  // Backwards-compat alias
+  reportService as reports,
   userService,
   roleService,
   auditService,

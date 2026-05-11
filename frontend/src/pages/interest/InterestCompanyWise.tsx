@@ -171,7 +171,7 @@ const InterestCompanyWise: React.FC = () => {
               <FaChartBar style={{ marginRight: '0.5rem' }} /> Interest by Company ({processedData.length} companies)
             </Card.Header>
             <Card.Body className="p-0">
-              <DataTable<InterestCompanyWiseData>
+              <DataTable
                 data={processedData}
                 columns={columns}
                 totalRows={processedData.length}

@@ -162,7 +162,7 @@ const DividendPromoter: React.FC = () => {
               <FaChartBar style={{ marginRight: '0.5rem' }} /> Promoter Payables ({processedData.length})
             </Card.Header>
             <Card.Body className="p-0">
-              <DataTable<DividendPromoterData>
+              <DataTable
                 data={processedData}
                 columns={columns}
                 totalRows={processedData.length}

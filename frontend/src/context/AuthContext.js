@@ -65,11 +65,7 @@ const CORE_NAV_READ_RESOURCES = new Set([
 ]);
 
 export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-  return context;
+  return useContext(AuthContext);
 };
 
 export const AuthProvider = ({ children }) => {

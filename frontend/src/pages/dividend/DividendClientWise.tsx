@@ -259,7 +259,7 @@ const DividendClientWise: React.FC = () => {
               <FaChartBar style={{ marginRight: '0.5rem' }} /> Dividend Payables ({processedData.length} records)
             </Card.Header>
             <Card.Body className="p-0">
-              <DataTable<DividendClientWiseData>
+              <DataTable
                 data={processedData}
                 columns={columns}
                 totalRows={processedData.length}

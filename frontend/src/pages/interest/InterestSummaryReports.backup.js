@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Container, Card, Button, Spinner, Alert } from 'react-bootstrap';
 import NavigationBar from '../../components/NavigationBar';
 import DateRangeFilter from '../../components/DateRangeFilter';

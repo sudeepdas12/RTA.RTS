@@ -212,7 +212,7 @@ const InterestSummaryReports: React.FC = () => {
               <FaChartBar style={{ marginRight: '0.5rem' }} /> Summary ({summaryData.length} categories)
             </Card.Header>
             <Card.Body className="p-0">
-              <DataTable<SummaryData>
+              <DataTable
                 data={summaryData}
                 columns={columns}
                 totalRows={summaryData.length}

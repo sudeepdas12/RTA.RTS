@@ -7,7 +7,7 @@
  * Copy this pattern to other pages (DividendPage, ClientsPage, etc.)
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, Row, Col, Button, Form, Alert, Badge } from 'react-bootstrap';
 import DataTable from '../components/DataTable';
 import { useInterestPayables, useMutateInterestPayable, useDeleteInterestPayable } from '../hooks/useQueries';
@@ -382,7 +382,7 @@ export function InterestPayablesPage() {
       {/* Data Table */}
       <Card>
         <Card.Body className="p-0">
-          <DataTable<InterestPayable>
+          <DataTable
             data={items}
             columns={columns}
             totalRows={totalCount}

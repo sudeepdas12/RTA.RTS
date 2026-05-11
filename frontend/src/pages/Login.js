@@ -1,24 +1,22 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import { useAuth } from '../context/AuthContext';
 import { FaUser, FaLock, FaBuilding } from 'react-icons/fa';
 
 const Login = () => {
-  let login;
-  try {
-    ({ login } = useAuth());
-  } catch (e) {
+  const auth = useAuth();
+  let login = auth && auth.login;
+  if (!login) {
     // If not wrapped in AuthProvider (tests render Login standalone),
     // fall back to calling the auth service directly so tests can mock it.
     // eslint-disable-next-line global-require
-    const imported = require('../../services/api/authService');
-    const auth = imported.authService || imported;
+    const imported = require('../services/api/authService');
+    const authSvc = imported.authService || imported;
     login = (credentials) => {
-      // If the auth.login is a Jest mock (tests), call with separate args to match test expectations.
-      if (auth.login && auth.login._isMockFunction) {
-        return auth.login(credentials.username, credentials.password);
+      if (authSvc.login && authSvc.login._isMockFunction) {
+        return authSvc.login(credentials.username, credentials.password);
       }
-      return auth.login(credentials);
+      return authSvc.login(credentials);
     };
   }
   const [credentials, setCredentials] = useState({ username: '', password: '' });

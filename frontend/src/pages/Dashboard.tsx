@@ -99,7 +99,7 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  const data = dashboardData || {};
+  const data: any = dashboardData || {};
   const interestData = data.interest || {};
   const dividendData = data.dividend || {};
 

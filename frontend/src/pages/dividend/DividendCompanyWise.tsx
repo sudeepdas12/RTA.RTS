@@ -151,7 +151,7 @@ const DividendCompanyWise: React.FC = () => {
               <FaChartBar style={{ marginRight: '0.5rem' }} /> Dividend by Company ({processedData.length} companies)
             </Card.Header>
             <Card.Body className="p-0">
-              <DataTable<DividendCompanyWiseData>
+              <DataTable
                 data={processedData}
                 columns={columns}
                 totalRows={processedData.length}

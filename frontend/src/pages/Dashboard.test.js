@@ -3,10 +3,10 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter as Router } from 'react-router-dom';
 import Dashboard from './Dashboard';
-import * as api from '../../services/api';
+import * as api from '../services/api';
 
 // Mock the API service
-jest.mock('../../services/api');
+jest.mock('../services/api');
 
 describe('Dashboard Component', () => {
   

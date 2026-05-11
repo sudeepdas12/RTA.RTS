@@ -4,9 +4,9 @@
  * Uses React Query hooks and DataTable for efficient data handling
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Container, Row, Col, Card, Button, Form, Modal, Badge, Alert } from 'react-bootstrap';
-import { FaEdit, FaTrash, FaDownload, FaBuilding, FaChevronRight } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaDownload, FaBuilding } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { useQueryClient } from 'react-query';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -16,7 +16,6 @@ import DataTable from '../components/DataTable';
 import api from '../services/api';
 import CustomSelect from '../components/CustomSelect';
 import { useCompanies } from '../hooks/useQueries';
-import '../styles/dashboard.css';
 
 interface Company {
   company_id?: number;
@@ -393,7 +392,7 @@ export function CompaniesManagement() {
               <FaBuilding style={{ marginRight: '0.5rem' }} /> Companies ({totalCount} total)
             </Card.Header>
             <Card.Body className="p-0">
-              <DataTable<Company>
+              <DataTable
                 data={companies}
                 columns={columns}
                 totalRows={totalCount}

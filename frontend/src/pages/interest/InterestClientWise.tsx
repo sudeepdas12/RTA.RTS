@@ -259,7 +259,7 @@ const InterestClientWise: React.FC = () => {
               <FaChartBar style={{ marginRight: '0.5rem' }} /> Interest Payables ({processedData.length} records)
             </Card.Header>
             <Card.Body className="p-0">
-              <DataTable<InterestClientWiseData>
+              <DataTable
                 data={processedData}
                 columns={columns}
                 totalRows={processedData.length}

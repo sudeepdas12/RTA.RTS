@@ -6,3 +6,5 @@ export const authService = {
   getProfile: () => api.get('/users/profile/'),
   changePassword: (data) => api.post('/users/change_password/', data),
 };
+
+export default authService;

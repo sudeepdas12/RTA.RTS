@@ -15,17 +15,12 @@ const toNepaliDigits = (value) =>
     .join('');
 
 const NavigationBar = () => {
-  let user;
-  let logout = () => {};
-  let hasPermission = () => false;
-  try {
-    ({ user, logout, hasPermission } = useAuth());
-  } catch (e) {
-    // Tests may render NavigationBar without AuthProvider; provide safe defaults
-    user = { full_name: 'User', username: 'user', role: 'User', permissions: {} };
-    logout = () => {};
-    hasPermission = () => false;
-  }
+  const auth = useAuth();
+  const { user, logout, hasPermission } = React.useMemo(() => ({
+    user: (auth && auth.user) || { full_name: 'User', username: 'user', role: 'User', permissions: {} },
+    logout: (auth && auth.logout) || (() => {}),
+    hasPermission: (auth && auth.hasPermission) || (() => false),
+  }), [auth]);
   const location = useLocation();
   const [openDropdown, setOpenDropdown] = React.useState(null);
   const [openSubmenu, setOpenSubmenu] = React.useState(null);

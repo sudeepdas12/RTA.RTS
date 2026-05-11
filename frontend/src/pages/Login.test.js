@@ -3,10 +3,10 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter as Router } from 'react-router-dom';
 import Login from './Login';
-import * as authService from '../../services/api/authService';
+import * as authService from '../services/api/authService';
 
 // Mock the auth service
-jest.mock('../../services/api/authService');
+jest.mock('../services/api/authService');
 
 // Mock useNavigate
 const mockNavigate = jest.fn();
