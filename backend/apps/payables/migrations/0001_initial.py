@@ -7,7 +7,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('clients', '0002_add_boid_field'),
+        ('clients', '0001_initial'),
     ]
 
     operations = [

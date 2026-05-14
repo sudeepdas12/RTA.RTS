@@ -4,8 +4,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('clients', '0002_add_boid_field'),
-        # companies app table should already exist via schema or prior migrations
+        ('clients', '0001_initial'),
     ]
 
     operations = [
