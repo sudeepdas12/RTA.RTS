@@ -3,7 +3,8 @@ import { Row, Col, Card, Form, Button, Alert, Spinner, Table, Badge } from 'reac
 import { useAuth } from '../context/AuthContext';
 
 const IAFAllocations = () => {
-  const { authToken } = useAuth();
+  useAuth();
+  const authToken = localStorage.getItem('access_token');
   const [file, setFile] = useState(null);
   const [category, setCategory] = useState('PUBLIC');
   const [companyCode, setCompanyCode] = useState('');

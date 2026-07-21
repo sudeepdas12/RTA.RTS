@@ -10,8 +10,10 @@ psql -U postgres -c "CREATE USER rta_user WITH PASSWORD 'rta123';"
 psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE rta_rts_db TO rta_user;"
 
 echo.
-echo Step 2: Loading database schema...
-psql -U postgres -d rta_rts_db -f schema.sql
+echo Step 2: Running Django migrations...
+pushd ..\backend
+python manage.py migrate --noinput
+popd
 
 echo.
 echo ========================================

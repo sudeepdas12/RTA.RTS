@@ -24,7 +24,7 @@ const DividendPromoter = () => {
       const aggregated = aggregateBy(
         filtered,
         (item) => item.company_name,
-        (item) => item.net_amount
+        (item) => item.net_payable
       );
       setData(aggregated);
     } catch (err) {

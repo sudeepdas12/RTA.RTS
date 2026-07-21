@@ -23,7 +23,7 @@ const InterestCompanyWise = () => {
       const aggregated = aggregateBy(
         items,
         (item) => item.company_name,
-        (item) => item.net_amount
+        (item) => item.net_payable
       );
       setData(aggregated);
     } catch (err) {

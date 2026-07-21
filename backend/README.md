@@ -25,9 +25,9 @@ GRANT ALL PRIVILEGES ON DATABASE rta_rts_db TO rta_user;
 # Exit PostgreSQL
 \q
 
-# Execute schema
-cd ../database
-psql -U postgres -d rta_rts_db -f schema.sql
+# Run Django migrations
+cd ../backend
+python manage.py migrate --noinput
 ```
 
 ### 2. Create Virtual Environment
@@ -74,7 +74,7 @@ ALLOWED_HOSTS=localhost,127.0.0.1,192.168.1.*
 
 DB_NAME=rta_rts_db
 DB_USER=rta_user
-DB_PASSWORD=your_secure_password
+DB_PASSWORD=rta123
 DB_HOST=localhost
 DB_PORT=5432
 
@@ -92,8 +92,7 @@ mkdir staticfiles
 ### 6. Run Database Migrations (if needed)
 
 ```bash
-python manage.py makemigrations
-python manage.py migrate
+python manage.py migrate --noinput
 ```
 
 ### 7. Create Superuser (Optional)

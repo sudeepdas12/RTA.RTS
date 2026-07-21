@@ -11,13 +11,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Footer from './components/Footer';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import InterestCompanyWise from './pages/interest/InterestCompanyWise';
-import InterestPrivateSector from './pages/interest/InterestPrivateSector';
-import InterestInstitution from './pages/interest/InterestInstitution';
-import InterestTaxExemptedSector from './pages/interest/InterestTaxExemptedSector';
-import InterestClientWise from './pages/interest/InterestClientWise';
-import InterestDashboard from './pages/interest/InterestDashboard';
-import InterestSummaryReports from './pages/interest/InterestSummaryReports';
+import InterestReconciliation from './pages/interest/InterestReconciliation';
 import DividendCompanyWise from './pages/dividend/DividendCompanyWise';
 import DividendPublic from './pages/dividend/DividendPublic';
 import DividendPromoter from './pages/dividend/DividendPromoter';
@@ -34,6 +28,8 @@ import AuditLogs from './pages/AuditLogs';
 import Users from './pages/Users';
 import PendingApprovals from './pages/PendingApprovals';
 import Uploads from './pages/Uploads';
+import IAFAllocations from './pages/IAFAllocations';
+import FiscalYearSettings from './pages/FiscalYearSettings';
 import './App.css';
 
 function App() {
@@ -53,66 +49,10 @@ function App() {
               }
             />
             <Route
-              path="/interest/company-wise"
+              path="/interest/reconciliation"
               element={
                 <PrivateRoute>
-                  <InterestCompanyWise />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/interest/private-sector"
-              element={
-                <PrivateRoute>
-                  <InterestPrivateSector />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/interest/public-sector"
-              element={
-                <PrivateRoute>
-                  <InterestPrivateSector />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/interest/tax-exempted-sector"
-              element={
-                <PrivateRoute>
-                  <InterestTaxExemptedSector />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/interest/institution"
-              element={
-                <PrivateRoute>
-                  <InterestInstitution />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/interest/client-wise"
-              element={
-                <PrivateRoute>
-                  <InterestClientWise />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/interest/dashboard"
-              element={
-                <PrivateRoute>
-                  <InterestDashboard />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/interest/summary-reports"
-              element={
-                <PrivateRoute>
-                  <InterestSummaryReports />
+                  <InterestReconciliation />
                 </PrivateRoute>
               }
             />
@@ -241,6 +181,22 @@ function App() {
               element={
                 <PrivateRoute>
                   <Uploads />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/iaf-allocations"
+              element={
+                <PrivateRoute>
+                  <IAFAllocations />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/fiscal-year-settings"
+              element={
+                <PrivateRoute>
+                  <FiscalYearSettings />
                 </PrivateRoute>
               }
             />

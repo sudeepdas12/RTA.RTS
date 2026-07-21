@@ -232,7 +232,7 @@ code {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   background: #ffffff;
-  overflow: hidden;
+  overflow: visible;
   position: relative;
 }
 
@@ -536,9 +536,108 @@ code {
   outline: none !important;
 }
 
-/* Hide native date picker icon in WebKit */
+/* Preserve native date picker controls for date inputs */
+input[type="date"] {
+  appearance: auto !important;
+  -webkit-appearance: auto !important;
+  -moz-appearance: auto !important;
+}
+
 input[type="date"]::-webkit-calendar-picker-indicator {
-  display: none;
+  display: block !important;
+  opacity: 1 !important;
+}
+
+input[type="date"]::-moz-calendar-picker-indicator {
+  display: block !important;
+  opacity: 1 !important;
+}
+
+.app-date-picker-wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.app-date-picker-input {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  cursor: pointer;
+}
+
+.app-date-picker-input input {
+  width: 100%;
+  cursor: pointer;
+  background-color: #fff;
+}
+
+.app-date-picker-bs-label {
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  color: #495057;
+}
+
+.app-date-picker-popup {
+  position: absolute;
+  z-index: 1050;
+  top: calc(100% + 0.5rem);
+  left: 0;
+  width: 100%;
+  max-width: 340px;
+  padding: 0.75rem;
+  border: 1px solid rgba(0,0,0,0.15);
+  border-radius: 0.5rem;
+  background: #ffffff;
+  box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.12);
+}
+
+.app-date-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.app-date-picker-header-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.app-date-picker-weekdays,
+.app-date-picker-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: minmax(2.4rem, auto);
+  gap: 0.25rem;
+}
+
+.app-date-picker-weekday {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.app-date-picker-day {
+  width: 100%;
+  min-height: 2.4rem;
+  border: none;
+  border-radius: 0.35rem;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 600;
+  color: #212529;
+}
+
+.app-date-picker-day:hover,
+.app-date-picker-day.selected {
+  background: #0d6efd;
+  color: #ffffff;
+}
+
+.app-date-picker-day:disabled {
+  background: transparent;
+  cursor: default;
 }
 
 /* Hide number spinners (WebKit) */

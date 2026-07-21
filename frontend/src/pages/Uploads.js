@@ -2,10 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { Container, Row, Col, Card, Button, Form, Tabs, Tab, Alert, Table, Badge, Modal } from 'react-bootstrap';
 import { FaUpload, FaDownload, FaPlus, FaEdit, FaTrash, FaDatabase } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import { format, parseISO } from 'date-fns';
+import IAFAllocations from '../pages/IAFAllocations';
 import NavigationBar from '../components/NavigationBar';
 import api, { settingsService, companyService } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import CustomSelect from '../components/CustomSelect';
+import AppDatePicker from '../components/AppDatePicker';
 import '../styles/dashboard.css';
 
 const Uploads = () => {
@@ -18,6 +21,7 @@ const Uploads = () => {
     interest: false,
     dividend: false,
     fiscalYears: false,
+    debenture: false,
   });
   const [uploadFiles, setUploadFiles] = useState({
     companies: null,
@@ -26,6 +30,14 @@ const Uploads = () => {
     interest: null,
     dividend: null,
     fiscalYears: null,
+    debenture: null,
+  });
+  const [debentureUploadForm, setDebentureUploadForm] = useState({
+    company_code: '',
+    interest_rate: '8.75',
+    tax_rate: '6.00',
+    period_from: '',
+    period_to: '',
   });
   const [saving, setSaving] = useState({
     companies: false,
@@ -37,12 +49,6 @@ const Uploads = () => {
   const [companyForm, setCompanyForm] = useState({
     company_code: '',
     company_name: '',
-    sector_type: 'Private',
-    interest_tax_status: 'Taxable',
-    pan_no: '',
-    bank_name: '',
-    bank_account_no: '',
-    status: 'Active',
   });
   const [clientForm, setClientForm] = useState({
     client_code: '',
@@ -62,6 +68,11 @@ const Uploads = () => {
     status: 'Active',
   });
   const [companies, setCompanies] = useState([]);
+  const [selectedUploadCompany, setSelectedUploadCompany] = useState('');
+  const [selectedUploadInterestCompany, setSelectedUploadInterestCompany] = useState('');
+  const [selectedUploadDividendCompany, setSelectedUploadDividendCompany] = useState('');
+  const [selectedInterestPhysicalYear, setSelectedInterestPhysicalYear] = useState('');
+  const [selectedDividendPhysicalYear, setSelectedDividendPhysicalYear] = useState('');
   const [fiscalYears, setFiscalYears] = useState([]);
   const [showFiscalModal, setShowFiscalModal] = useState(false);
   const [editingFiscal, setEditingFiscal] = useState(null);
@@ -229,6 +240,18 @@ const Uploads = () => {
 
     const formData = new FormData();
     formData.append('file', file);
+    // Include company_code for clients, interest, and dividend uploads
+    if (type === 'clients' && selectedUploadCompany) {
+      formData.append('company_code', selectedUploadCompany);
+    }
+    if (type === 'interest' && selectedUploadInterestCompany) {
+      formData.append('company_code', selectedUploadInterestCompany);
+      if (selectedInterestPhysicalYear) formData.append('physical_year', selectedInterestPhysicalYear);
+    }
+    if (type === 'dividend' && selectedUploadDividendCompany) {
+      formData.append('company_code', selectedUploadDividendCompany);
+      if (selectedDividendPhysicalYear) formData.append('physical_year', selectedDividendPhysicalYear);
+    }
 
     try {
       setUploading((prev) => ({ ...prev, [type]: true }));
@@ -304,12 +327,6 @@ const Uploads = () => {
       setCompanyForm({
         company_code: '',
         company_name: '',
-        sector_type: 'Private',
-        interest_tax_status: 'Taxable',
-        pan_no: '',
-        bank_name: '',
-        bank_account_no: '',
-        status: 'Active',
       });
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to create company');
@@ -369,6 +386,61 @@ const Uploads = () => {
     }
   };
 
+  const handleDebentureUpload = async () => {
+    if (!uploadFiles.debenture || !debentureUploadForm.company_code) {
+      toast.error('Company and file are required');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', uploadFiles.debenture);
+    formData.append('company_code', debentureUploadForm.company_code);
+    formData.append('interest_rate', debentureUploadForm.interest_rate);
+    formData.append('tax_rate', debentureUploadForm.tax_rate);
+    if (debentureUploadForm.period_from) formData.append('period_from', debentureUploadForm.period_from);
+    if (debentureUploadForm.period_to) formData.append('period_to', debentureUploadForm.period_to);
+
+    try {
+      setUploading((prev) => ({ ...prev, debenture: true }));
+      const response = await api.post('/payables/debenture/upload/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success(`Upload completed! ${response.data.created} records created.`);
+      if (response.data.errors?.length > 0) {
+        console.log('Upload errors:', response.data.errors);
+        toast.warning(`${response.data.errors.length} errors (see console)`);
+      }
+      setUploadFiles((prev) => ({ ...prev, debenture: null }));
+    } catch (error) {
+      // Surface detailed errors when available
+      console.error('Debenture upload failed:', error);
+      let errorMsg = 'Debenture upload failed';
+      const resp = error.response?.data;
+      if (resp) {
+        // If backend included traceback/detail, log it and show a concise message
+        if (resp.detail) {
+          console.error('Upload detail:', resp.detail);
+          errorMsg = typeof resp.detail === 'string' ? resp.detail : JSON.stringify(resp.detail);
+        } else if (resp.error) {
+          errorMsg = resp.error;
+        } else if (typeof resp === 'string') {
+          errorMsg = resp;
+        } else if (typeof resp === 'object') {
+          // Flatten object values
+          try {
+            errorMsg = Object.values(resp).flat().map(v => (typeof v === 'string' ? v : JSON.stringify(v))).join(', ');
+          } catch (e) {
+            errorMsg = JSON.stringify(resp);
+          }
+        }
+      }
+      // Show user-friendly toast and keep detailed info in console
+      toast.error(errorMsg);
+    } finally {
+      setUploading((prev) => ({ ...prev, debenture: false }));
+    }
+  };
+
   return (
     <>
       <NavigationBar />
@@ -391,7 +463,7 @@ const Uploads = () => {
               {canCreateCompanies && (
                 <Col lg={6}>
                   <Card className="h-100 chart-card-modern">
-                    <Card.Header>Create Company</Card.Header>
+                  <Card.Header>Create Company</Card.Header>
                     <Card.Body>
                       <Row className="g-3">
                         <Col md={6}>
@@ -409,66 +481,6 @@ const Uploads = () => {
                             <Form.Control
                               value={companyForm.company_name}
                               onChange={(e) => setCompanyForm({ ...companyForm, company_name: e.target.value })}
-                            />
-                          </Form.Group>
-                        </Col>
-                        <Col md={4}>
-                          <Form.Group>
-                            <Form.Label>Sector</Form.Label>
-                            <CustomSelect
-                              options={[{ value: 'Public', label: 'Public' }, { value: 'Private', label: 'Private' }]}
-                              value={companyForm.sector_type}
-                              onChange={(val) => setCompanyForm({ ...companyForm, sector_type: val })}
-                              placeholder="Select Sector"
-                            />
-                          </Form.Group>
-                        </Col>
-                        <Col md={4}>
-                          <Form.Group>
-                            <Form.Label>Tax Status</Form.Label>
-                            <CustomSelect
-                              options={[{ value: 'Taxable', label: 'Taxable' }, { value: 'Exempted', label: 'Exempted' }]}
-                              value={companyForm.interest_tax_status}
-                              onChange={(val) => setCompanyForm({ ...companyForm, interest_tax_status: val })}
-                              placeholder="Select Tax Status"
-                            />
-                          </Form.Group>
-                        </Col>
-                        <Col md={4}>
-                          <Form.Group>
-                            <Form.Label>Status</Form.Label>
-                            <CustomSelect
-                              options={[{ value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' }]}
-                              value={companyForm.status}
-                              onChange={(val) => setCompanyForm({ ...companyForm, status: val })}
-                              placeholder="Select Status"
-                            />
-                          </Form.Group>
-                        </Col>
-                        <Col md={6}>
-                          <Form.Group>
-                            <Form.Label>PAN No</Form.Label>
-                            <Form.Control
-                              value={companyForm.pan_no}
-                              onChange={(e) => setCompanyForm({ ...companyForm, pan_no: e.target.value })}
-                            />
-                          </Form.Group>
-                        </Col>
-                        <Col md={6}>
-                          <Form.Group>
-                            <Form.Label>Bank Name</Form.Label>
-                            <Form.Control
-                              value={companyForm.bank_name}
-                              onChange={(e) => setCompanyForm({ ...companyForm, bank_name: e.target.value })}
-                            />
-                          </Form.Group>
-                        </Col>
-                        <Col md={6}>
-                          <Form.Group>
-                            <Form.Label>Bank Account No</Form.Label>
-                            <Form.Control
-                              value={companyForm.bank_account_no}
-                              onChange={(e) => setCompanyForm({ ...companyForm, bank_account_no: e.target.value })}
                             />
                           </Form.Group>
                         </Col>
@@ -614,6 +626,18 @@ const Uploads = () => {
                     <Card.Header>Clients Upload</Card.Header>
                     <Card.Body>
                       <Form.Group className="mb-3">
+                        <Form.Label>Company (optional)</Form.Label>
+                        <CustomSelect
+                          options={companies.map((c) => ({ value: c.company_code, label: `${c.company_code} - ${c.company_name}` }))}
+                          value={selectedUploadCompany}
+                          onChange={(val) => setSelectedUploadCompany(val)}
+                          placeholder="-- Select company (optional) --"
+                          isSearchable
+                          isClearable
+                        />
+                      </Form.Group>
+
+                      <Form.Group className="mb-3">
                         <Form.Label>Upload Clients File</Form.Label>
                         <Form.Control
                           type="file"
@@ -733,72 +757,64 @@ const Uploads = () => {
             </Row>
           </Tab>
 
+          <Tab eventKey="iaf" title="IAF File Conversion">
+            <Row className="g-4">
+              <Col xs={12}>
+                <Card className="h-100 chart-card-modern">
+                  <Card.Header>IAF Allocations</Card.Header>
+                  <Card.Body>
+                    <IAFAllocations />
+                  </Card.Body>
+                </Card>
+              </Col>
+            </Row>
+          </Tab>
+
           <Tab eventKey="payables" title="Payables">
             <Row className="g-4">
-              {canCreateInterest && (
-                <Col md={6} lg={4}>
-                  <Card className="h-100 chart-card-modern">
-                    <Card.Header>Interest Payables Upload</Card.Header>
-                    <Card.Body>
-                      <Form.Group className="mb-3">
-                        <Form.Label>Upload Interest Payables File</Form.Label>
-                        <Form.Control
-                          type="file"
-                          accept=".xlsx,.csv"
-                          onChange={(e) => setUploadFiles((prev) => ({ ...prev, interest: e.target.files[0] || null }))}
-                          disabled={uploading.interest}
-                        />
-                        {uploadFiles.interest?.name && (
-                          <Form.Text className="text-muted">Selected: {uploadFiles.interest.name}</Form.Text>
-                        )}
-                        <Form.Text className="text-muted">
-                          Required columns: company_code, client_code, gross_interest, tax_amount, due_date. Optional: payment_status
-                        </Form.Text>
-                      </Form.Group>
-                      <div className="d-flex gap-2">
-                        <Button
-                          variant="primary"
-                          disabled={uploading.interest || !uploadFiles.interest}
-                          onClick={() => handleUpload('interest', '/payables/interest/upload/', uploadFiles.interest)}
-                        >
-                          {uploading.interest ? <div className="loading-spinner-modern loading-spinner-sm"></div> : <FaUpload />} Upload
-                        </Button>
-                        <Button
-                          variant="outline-secondary"
-                          onClick={() => handleDownloadTemplate('/payables/interest/export_template/', 'interest_payables_template.xlsx')}
-                        >
-                          <FaDownload /> Template
-                        </Button>
-                      </div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              )}
-
               {canCreateDividend && (
                 <Col md={6} lg={4}>
                   <Card className="h-100 chart-card-modern">
-                    <Card.Header>Dividend Payables Upload</Card.Header>
+                    <Card.Header>Dividend Payables Upload (Stock)</Card.Header>
                     <Card.Body>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Company *</Form.Label>
+                        <CustomSelect
+                          options={companies.map((c) => ({ value: c.company_code, label: `${c.company_code} - ${c.company_name}` }))}
+                          value={selectedUploadDividendCompany}
+                          onChange={(val) => setSelectedUploadDividendCompany(val)}
+                          placeholder="-- Select Company --"
+                          isSearchable
+                        />
+                      </Form.Group>
                       <Form.Group className="mb-3">
                         <Form.Label>Upload Dividend Payables File</Form.Label>
                         <Form.Control
                           type="file"
                           accept=".xlsx,.csv"
                           onChange={(e) => setUploadFiles((prev) => ({ ...prev, dividend: e.target.files[0] || null }))}
-                          disabled={uploading.dividend}
+                          disabled={uploading.dividend || !selectedUploadDividendCompany}
                         />
                         {uploadFiles.dividend?.name && (
                           <Form.Text className="text-muted">Selected: {uploadFiles.dividend.name}</Form.Text>
                         )}
                         <Form.Text className="text-muted">
-                          Required columns: company_code, client_code, shares_held, gross_dividend, tax_amount. Optional: fiscal_year, payment_status
+                          Required columns: shares_held, gross_dividend, tax_amount. Each row must include either <code>client_code</code> or <code>boid</code>. Optional: fiscal_year, payment_status
                         </Form.Text>
+                      </Form.Group>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Physical Year (optional)</Form.Label>
+                        <Form.Control
+                          placeholder="e.g., 2024"
+                          value={selectedDividendPhysicalYear}
+                          onChange={(e) => setSelectedDividendPhysicalYear(e.target.value)}
+                        />
+                        <Form.Text className="text-muted">Optional: set a physical year to apply to all uploaded rows that don't include a year.</Form.Text>
                       </Form.Group>
                       <div className="d-flex gap-2">
                         <Button
                           variant="primary"
-                          disabled={uploading.dividend || !uploadFiles.dividend}
+                          disabled={uploading.dividend || !uploadFiles.dividend || !selectedUploadDividendCompany}
                           onClick={() => handleUpload('dividend', '/payables/dividend/upload/', uploadFiles.dividend)}
                         >
                           {uploading.dividend ? <div className="loading-spinner-modern loading-spinner-sm"></div> : <FaUpload />} Upload
@@ -810,6 +826,97 @@ const Uploads = () => {
                           <FaDownload /> Template
                         </Button>
                       </div>
+                    </Card.Body>
+                  </Card>
+                </Col>
+              )}
+
+              {/* Debenture Data Upload - for Interest Reconciliation */}
+              {canCreateInterest && (
+                <Col md={6} lg={4}>
+                  <Card className="h-100 chart-card-modern">
+                    <Card.Header>Debenture Data Upload (Interest Reconciliation)</Card.Header>
+                    <Card.Body>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Company *</Form.Label>
+                        <CustomSelect
+                          options={companies.map((c) => ({ value: c.company_code, label: `${c.company_code} - ${c.company_name}` }))}
+                          value={debentureUploadForm.company_code}
+                          onChange={(val) => setDebentureUploadForm(f => ({...f, company_code: val}))}
+                          placeholder="-- Select Company --"
+                          isSearchable
+                        />
+                      </Form.Group>
+                      <Form.Group className="mb-3">
+                        <Form.Label>Upload Debenture Data File</Form.Label>
+                        <Form.Control
+                          type="file"
+                          accept=".xlsx,.xls,.csv"
+                          onChange={(e) => setUploadFiles((prev) => ({ ...prev, debenture: e.target.files[0] || null }))}
+                          disabled={uploading.debenture || !debentureUploadForm.company_code}
+                        />
+                        {uploadFiles.debenture?.name && (
+                          <Form.Text className="text-muted">Selected: {uploadFiles.debenture.name}</Form.Text>
+                        )}
+                        <Form.Text className="text-muted">
+                          Upload the Excel file with <strong>BOID, NAME, KITTA, BANK, ACCOUNT</strong> columns. Interest is auto-calculated. 
+                          Supports both ORIGINAL and PUBLIC sheet formats.
+                        </Form.Text>
+                      </Form.Group>
+                      <Row className="g-2 mb-3">
+                        <Col md={6}>
+                          <Form.Label>Interest Rate %</Form.Label>
+                          <Form.Control
+                            type="number" step="0.01"
+                            value={debentureUploadForm.interest_rate}
+                            onChange={(e) => setDebentureUploadForm(f => ({...f, interest_rate: e.target.value}))}
+                          />
+                        </Col>
+                        <Col md={6}>
+                          <Form.Label>Tax Rate %</Form.Label>
+                          <Form.Control
+                            type="number" step="0.01"
+                            value={debentureUploadForm.tax_rate}
+                            onChange={(e) => setDebentureUploadForm(f => ({...f, tax_rate: e.target.value}))}
+                          />
+                        </Col>
+                        <Col md={6}>
+                          <Form.Label>Period From</Form.Label>
+                          <AppDatePicker
+                            selected={debentureUploadForm.period_from ? new Date(debentureUploadForm.period_from) : null}
+                            onChange={(d) => setDebentureUploadForm(f => ({...f, period_from: d ? format(d, 'yyyy-MM-dd') : ''}))}
+                            className="form-control"
+                            dateFormat="yyyy-MM-dd"
+                            placeholderText="From date"
+                          />
+                        </Col>
+                        <Col md={6}>
+                          <Form.Label>Period To</Form.Label>
+                          <AppDatePicker
+                            selected={debentureUploadForm.period_to ? new Date(debentureUploadForm.period_to) : null}
+                            onChange={(d) => setDebentureUploadForm(f => ({...f, period_to: d ? format(d, 'yyyy-MM-dd') : ''}))}
+                            className="form-control"
+                            dateFormat="yyyy-MM-dd"
+                            placeholderText="To date"
+                          />
+                        </Col>
+                      </Row>
+                      <Button
+                        variant="primary"
+                        disabled={
+                          uploading.debenture || 
+                          !uploadFiles.debenture || 
+                          !debentureUploadForm.company_code ||
+                          !debentureUploadForm.period_from ||
+                          !debentureUploadForm.period_to
+                        }
+                        onClick={handleDebentureUpload}
+                      >
+                        {uploading.debenture ? <div className="loading-spinner-modern loading-spinner-sm"></div> : <FaUpload />} Upload & Calculate
+                      </Button>
+                      <Form.Text className="text-muted d-block mt-2">
+                        Data will appear in <strong>Debenture Interest</strong> page.
+                      </Form.Text>
                     </Card.Body>
                   </Card>
                 </Col>
@@ -856,18 +963,24 @@ const Uploads = () => {
                         </Col>
                         <Col md={6}>
                           <Form.Label>Statement From</Form.Label>
-                          <Form.Control
-                            type="date"
-                            value={reconForm.statement_from}
-                            onChange={(e) => setReconForm({ ...reconForm, statement_from: e.target.value })}
+                          <AppDatePicker
+                            selected={reconForm.statement_from ? parseISO(reconForm.statement_from) : null}
+                            onChange={(d) => setReconForm({ ...reconForm, statement_from: d ? format(d, 'yyyy-MM-dd') : '' })}
+                            className="form-control"
+                            dateFormat="yyyy-MM-dd"
+                            isClearable
+                            placeholderText="Statement From"
                           />
                         </Col>
                         <Col md={6}>
                           <Form.Label>Statement To</Form.Label>
-                          <Form.Control
-                            type="date"
-                            value={reconForm.statement_to}
-                            onChange={(e) => setReconForm({ ...reconForm, statement_to: e.target.value })}
+                          <AppDatePicker
+                            selected={reconForm.statement_to ? parseISO(reconForm.statement_to) : null}
+                            onChange={(d) => setReconForm({ ...reconForm, statement_to: d ? format(d, 'yyyy-MM-dd') : '' })}
+                            className="form-control"
+                            dateFormat="yyyy-MM-dd"
+                            isClearable
+                            placeholderText="Statement To"
                           />
                         </Col>
                       </Row>
@@ -1003,7 +1116,7 @@ const Uploads = () => {
           </Tab>
         </Tabs>
 
-        <Modal show={showFiscalModal} onHide={() => setShowFiscalModal(false)}>
+        <Modal show={showFiscalModal} onHide={() => setShowFiscalModal(false)} enforceFocus={false}>
           <Modal.Header closeButton>
             <Modal.Title>{editingFiscal ? 'Edit' : 'Add'} Fiscal Year Setting</Modal.Title>
           </Modal.Header>

@@ -1,15 +1,15 @@
 from django.db import migrations, models
 
+
 class Migration(migrations.Migration):
+
+    # DDL on MySQL must run outside transactions
+    atomic = False
 
     dependencies = [
         ('clients', '0001_initial'),
     ]
 
     operations = [
-        migrations.AddField(
-            model_name='client',
-            name='boid',
-            field=models.CharField(max_length=50, null=True, blank=True, unique=True),
-        ),
+        # boid field already exists in 0001_initial
     ]

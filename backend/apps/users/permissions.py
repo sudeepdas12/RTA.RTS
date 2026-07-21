@@ -1,5 +1,7 @@
-
+import logging
 from rest_framework import permissions
+
+logger = logging.getLogger(__name__)
 
 class HasPermission(permissions.BasePermission):
     """
@@ -40,7 +42,7 @@ class IsAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
-        return request.user.role and request.user.role.role_name == 'Admin'
+        return request.user.role and request.user.role.role_name in ('Admin', 'Administrator')
 
 
 class ReadOnly(permissions.BasePermission):

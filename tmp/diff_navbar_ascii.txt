@@ -1,0 +1,176 @@
+diff --git "a/.\\tmp\\old_NavigationBar.css" "b/frontend\\src\\components\\NavigationBar.css"
+index efa8d7f..46df8c6 100644
+--- "a/.\\tmp\\old_NavigationBar.css"
++++ "b/frontend\\src\\components\\NavigationBar.css"
+@@ -1,4 +1,4 @@
+-???/* Modern Navbar Styling - Ultra Premium */
++/* Modern Navbar Styling - Ultra Premium */
+ :root {
+   /* Color variables for consistency and easy theming */
+   /* Soft solid palette (from your uploaded images) */
+@@ -184,6 +184,43 @@ body, html {
+   transform: rotate(-45deg) translate(6px, -6px);
+ }
+ 
++/* Live clock/date widget */
++.navbar-clock {
++  display: flex;
++  flex-direction: column;
++  align-items: center;
++  justify-content: center;
++  min-width: 180px;
++  padding: 8px 14px;
++  margin: 0 16px;
++  border-radius: 18px;
++  border: 1px solid rgba(255, 255, 255, 0.24);
++  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
++  color: #ffffff;
++  box-shadow: 0 10px 24px rgba(49, 20, 122, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.25);
++  backdrop-filter: blur(12px);
++  text-align: center;
++  flex-shrink: 0;
++}
++
++.clock-date {
++  font-size: 0.76rem;
++  font-weight: 600;
++  letter-spacing: 0.08em;
++  text-transform: uppercase;
++  color: rgba(255, 255, 255, 0.92);
++  line-height: 1.2;
++}
++
++.clock-time {
++  font-size: 1rem;
++  font-weight: 700;
++  letter-spacing: 0.04em;
++  line-height: 1.2;
++  color: #ffffff;
++  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
++}
++
+ /* Full Width Navigation Menu */
+ .navbar-menu-fullwidth {
+   display: flex;
+@@ -222,7 +259,7 @@ body, html {
+   box-shadow: 0 10px 26px rgba(26, 16, 64, 0.28);
+ }
+ 
+-/* Dropdowns inside fullwidth menu ?????? light panels with a subtle purple edge */
++/* Dropdowns inside fullwidth menu ??? light panels with a subtle purple edge */
+ .navbar-menu-fullwidth .dropdown-menu {
+   background: linear-gradient(180deg, #ffffff, #fff7ff) !important;
+   color: #1e293b !important;
+@@ -677,6 +714,10 @@ body, html {
+   flex-shrink: 0;
+ }
+ 
++.navbar-top {
++  gap: 14px;
++}
++
+ .nav-user {
+   order: 1;
+ }
+@@ -758,9 +799,23 @@ body, html {
+     padding: 8px 15px;
+   }
+ 
++  .navbar-clock {
++    min-width: 150px;
++    margin: 0 8px;
++    padding: 7px 10px;
++  }
++
++  .clock-date {
++    font-size: 0.7rem;
++  }
++
++  .clock-time {
++    font-size: 0.92rem;
++  }
++
+   .navbar-menu-fullwidth {
+     position: absolute;
+-    top: 55px;
++    top: calc(100% + 1px);
+     left: 0;
+     right: 0;
+     /* Mobile full-width menu - lighter purple */
+@@ -779,8 +834,9 @@ body, html {
+   }
+ 
+   .navbar-menu-fullwidth.active {
+-    max-height: 700px;
++    max-height: none;
+     padding: 15px;
++    overflow: visible;
+   }
+ 
+   .nav-links {
+@@ -806,23 +862,29 @@ body, html {
+   }
+ 
+   .dropdown-menu {
+-    position: static;
+-    max-height: 0;
+-    overflow: hidden;
++    position: absolute;
++    top: calc(100% + 6px);
++    left: 0;
++    right: auto;
++    min-width: 220px;
++    max-height: none;
++    overflow: visible;
+     box-shadow: none;
+     opacity: 1;
+     visibility: visible;
+     transform: none;
+-    transition: max-height 0.3s ease;
++    transition: opacity 0.3s ease, transform 0.3s ease;
+     background: linear-gradient(180deg, #7c3aed 0%, #8860D0 45%, #b99ef5 100%);
+     color: #ffffff;
+     border-radius: 8px;
+-    margin-top: 4px;
++    margin-top: 0;
+     border: 1px solid rgba(255, 255, 255, 0.1);
++    z-index: 3000;
+   }
+ 
+   .dropdown-menu.show {
+-    max-height: 500px;
++    opacity: 1;
++    visibility: visible;
+   }
+ 
+   .dropdown-item {
+@@ -853,6 +915,11 @@ body, html {
+     order: 1;
+   }
+ 
++  .navbar-clock {
++    display: flex;
++    order: 2;
++  }
++
+   .user-btn {
+     width: auto;
+     justify-content: flex-start;
+@@ -885,6 +952,16 @@ body, html {
+     min-width: auto;
+   }
+ 
++  .navbar-clock {
++    min-width: 122px;
++    margin: 0 6px;
++    padding: 6px 8px;
++  }
++
++  .clock-date {
++    display: none;
++  }
++
+   .user-name {
+     display: none;
+   }
+

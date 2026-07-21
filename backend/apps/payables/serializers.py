@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import InterestPayable, DividendPayable
+from .models import InterestPayable, DividendPayable, DebentureReconciliation
 from apps.companies.serializers import CompanySerializer
 from apps.clients.serializers import ClientSerializer
 
@@ -69,6 +69,53 @@ class DividendPayableSerializer(serializers.ModelSerializer):
             )
         
         return data
+
+
+class DebentureReconciliationSerializer(serializers.ModelSerializer):
+    """Serializer for Debenture Reconciliation"""
+    sector_type_display = serializers.CharField(source='get_sector_type_display', read_only=True)
+    tax_status_display = serializers.CharField(source='get_tax_status_display', read_only=True)
+    
+    class Meta:
+        model = DebentureReconciliation
+        fields = '__all__'
+        read_only_fields = ('id', 'created_at', 'updated_at', 'created_by', 'upload_batch')
+    
+
+class DebentureUploadSerializer(serializers.Serializer):
+    """Serializer for debenture Excel/CSV upload"""
+    file = serializers.FileField()
+    company_code = serializers.CharField(required=True)
+    company_name = serializers.CharField(required=False, default="")
+    report_title = serializers.CharField(required=False, default="")
+    report_subtitle = serializers.CharField(required=False, default="")
+    sector_type = serializers.ChoiceField(choices=DebentureReconciliation.SECTOR_CHOICES, default='Public', required=False)
+    tax_status = serializers.ChoiceField(choices=DebentureReconciliation.TAX_STATUS_CHOICES, default='Taxable', required=False)
+    period_from = serializers.DateField(required=False)
+    period_to = serializers.DateField(required=False)
+    period_days = serializers.IntegerField(required=False, default=0)
+    interest_rate = serializers.DecimalField(required=False, max_digits=5, decimal_places=2, default=8.75)
+    tax_rate = serializers.DecimalField(required=False, max_digits=5, decimal_places=2, default=6.00)
+
+    def validate_company_code(self, value):
+        """Auto-fetch company name if not provided"""
+        return value
+
+    def validate(self, data):
+        """Auto-fill company_name from database if not provided"""
+        if not data.get('company_name'):
+            from apps.companies.models import Company
+            try:
+                company = Company.objects.get(company_code=data['company_code'])
+                data['company_name'] = company.company_name
+            except Company.DoesNotExist:
+                data['company_name'] = data['company_code']
+        return data
+
+    def validate_file(self, value):
+        if not value.name.endswith(('.xlsx', '.csv')):
+            raise serializers.ValidationError("Only Excel (.xlsx) or CSV files are allowed")
+        return value
 
 
 class PayableUploadSerializer(serializers.Serializer):

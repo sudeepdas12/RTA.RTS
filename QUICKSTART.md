@@ -25,9 +25,9 @@ DB_PASSWORD=rta123
 docker compose up -d --build
 ```
 
-3) Load schema into the DB container:
+3) Run Django migrations:
 ```
-Get-Content .\database\schema.sql | docker exec -i rtarts-db-1 psql -U rta_user -d rta_rts_db
+docker compose exec -T backend python manage.py migrate --noinput
 ```
 
 4) Ensure admin user exists:
@@ -67,9 +67,9 @@ CREATE USER rta_user WITH PASSWORD 'rta123';
 GRANT ALL PRIVILEGES ON DATABASE rta_rts_db TO rta_user;
 \q
 
-# Load schema
-cd database
-psql -U postgres -d rta_rts_db -f schema.sql
+# Run migrations
+cd backend
+python manage.py migrate --noinput
 ```
 
 ### Step 2: Backend Setup (2 minutes)

@@ -20,18 +20,18 @@ CREATE USER rta_user WITH PASSWORD 'your_secure_password';
 GRANT ALL PRIVILEGES ON DATABASE rta_rts_db TO rta_user;
 ```
 
-### 3. Execute Schema
+### 3. Run Migrations
 
-Navigate to the database directory and run:
+Create the database and user, then run Django migrations from the backend:
 
 ```bash
-psql -U postgres -d rta_rts_db -f schema.sql
+cd ..\backend
+python manage.py migrate --noinput
 ```
 
-Or using pgAdmin:
-1. Connect to the database
-2. Open Query Tool
-3. Open and execute `schema.sql`
+Or using Docker Compose:
+1. Start the services
+2. Run `docker compose exec -T backend python manage.py migrate --noinput`
 
 ### 4. Verify Installation
 

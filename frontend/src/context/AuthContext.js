@@ -3,10 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/api';
 import { toast } from 'react-toastify';
 // Lightweight JWT decode helper (avoid bundler default/import issues)
+const base64UrlDecode = (segment) => {
+  const normalized = segment.replace(/-/g, '+').replace(/_/g, '/');
+  const padding = normalized.length % 4;
+  const padded = padding ? normalized + '='.repeat(4 - padding) : normalized;
+  return atob(padded);
+};
+
 const jwtDecode = (token) => {
   try {
     const payload = token.split('.')[1] || '';
-    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    const json = base64UrlDecode(payload);
     return JSON.parse(json);
   } catch (e) {
     return {};
@@ -28,8 +35,6 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Run once on mount. We intentionally omit "logout" from deps since it would cause reruns.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   // Run once on mount. We intentionally omit "logout" from deps since it would cause reruns.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -94,7 +99,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const hasPermission = (resource, action = 'read') => {
-    if (!user || !user.permissions) return false;
+    if (!user) return false;
+    if (user.role === 'Admin') return true;
+    if (!user.permissions) return false;
 
     const permissions = user.permissions[resource];
     if (!permissions) return false;

@@ -1,0 +1,10 @@
+client_code,boid,full_name,holder_type,pan_or_citizenship,bank_name,bank_account_no,company
+DP0001,BOID-DP0001,Dipesh Pradhan,Public,303045601,Rastriya Banijya Bank,01001000022334,NYADI
+KS0002,BOID-KS0002,Khadka Securities Pvt. Ltd,Institution,500209901,Nabil Bank Limited,00405010022222,NYADI
+SS0003,BOID-SS0003,Saraswati Shrestha,Promoter,209988776,Nepal Bank Limited,01001000055667,NYADI
+NR0004,BOID-NR0004,National Retirement Fund,Institution,700123654,Nepal Rastra Bank,22010010000099,NYADI
+MB0005,BOID-MB0005,Mukti Bhandari,Public,105509933,NIC Asia Bank,250101000456789,NYADI
+LP0006,BOID-LP0006,Lumbini Pension Trust,Institution,808080123,Nepal Investment Bank,190101000334455,NYADI
+SB0007,BOID-SB0007,Samir Bista,Public,301010101,Sunrise Bank Limited,03030300006789,NYADI
+HF0008,BOID-HF0008,Himalayan Foundation,Institution,888777666,Prabhu Bank Limited,05050500004567,NYADI
+BG0009,BOID-BG0009,Bodhi Gurung,Promoter,207707707,Standard Chartered Bank Nepal,06060600001234,NYADI
