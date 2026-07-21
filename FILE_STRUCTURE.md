@@ -21,7 +21,6 @@ RTA.RTS/
 RTA.RTS/
 │
 ├── 📁 database/
-│   ├── schema.sql              # Complete PostgreSQL database schema
 │   └── README.md               # Database setup instructions
 │
 ├── 📁 backend/
@@ -187,12 +186,11 @@ RTA.RTS/
 
 ## Key Features by Module
 
-### Database (schema.sql)
-✅ 10 tables with relationships  
-✅ Indexes for performance  
-✅ Views for reporting  
-✅ Triggers for automation  
-✅ Initial roles and admin user
+### Database (Django migrations)
+✅ PostgreSQL schema managed by Django migrations  
+✅ Tables and relationships defined in app migrations  
+✅ PostgreSQL-compatible indexes and constraints  
+✅ No custom schema bootstrap file
 
 ### Backend Apps
 

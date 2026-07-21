@@ -1,0 +1,43 @@
+diff --git "a/.\\tmp\\old_App.js" "b/frontend\\src\\App.js"
+index 5a92c45..e144546 100644
+--- "a/.\\tmp\\old_App.js"
++++ "b/frontend\\src\\App.js"
+@@ -1,4 +1,4 @@
+-???import React from 'react';
++import React from 'react';
+ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+ import { ToastContainer } from 'react-toastify';
+ import 'react-toastify/dist/ReactToastify.css';
+@@ -34,6 +34,8 @@ import AuditLogs from './pages/AuditLogs';
+ import Users from './pages/Users';
+ import PendingApprovals from './pages/PendingApprovals';
+ import Uploads from './pages/Uploads';
++import IAFAllocations from './pages/IAFAllocations';
++import FiscalYearSettings from './pages/FiscalYearSettings';
+ import './App.css';
+ 
+ function App() {
+@@ -244,6 +246,22 @@ function App() {
+                 </PrivateRoute>
+               }
+             />
++            <Route
++              path="/iaf-allocations"
++              element={
++                <PrivateRoute>
++                  <IAFAllocations />
++                </PrivateRoute>
++              }
++            />
++            <Route
++              path="/fiscal-year-settings"
++              element={
++                <PrivateRoute>
++                  <FiscalYearSettings />
++                </PrivateRoute>
++              }
++            />
+             <Route path="/" element={<Navigate to="/dashboard" replace />} />
+             <Route path="*" element={<Navigate to="/dashboard" replace />} />
+           </Routes>
+

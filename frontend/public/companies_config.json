@@ -1,0 +1,16 @@
+[
+  {
+    "id": "RBBL",
+    "code": "RBBL",
+    "name": "Rastriya Banijya Bank Ltd.",
+    "title": "7% RBBL Debenture 2088",
+    "data_file": "debenture_data.json",
+    "interest_rate": 7,
+    "tax_rate": 6,
+    "period_days": 74,
+    "period_from": "2025-05-04",
+    "period_to": "2025-07-16",
+    "description": "Bank Wise Verified Interest Reconciliation List",
+    "is_default": true
+  }
+]

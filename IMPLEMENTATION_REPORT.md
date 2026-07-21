@@ -348,7 +348,7 @@ curl -X GET http://localhost:8000/api/companies/ \
 ## Support & Documentation
 
 - **API Documentation**: Available via Swagger/OpenAPI (can be enabled)
-- **Database Schema**: See database/schema.sql
+- **Database Schema**: See Django migrations and database/README.md
 - **Architecture**: See ARCHITECTURE.md
 - **Troubleshooting**: See backend logs: `docker compose logs backend`
 

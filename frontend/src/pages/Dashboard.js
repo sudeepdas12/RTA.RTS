@@ -55,11 +55,12 @@ const Dashboard = () => {
   };
 
   const formatCurrency = (value) => {
-    const formatted = new Intl.NumberFormat('ne-NP', {
+    return new Intl.NumberFormat('en-NP', {
+      style: 'currency',
+      currency: 'NPR',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(value || 0);
-    return `रू ${formatted}`;
   };
 
   const formatNumber = (value) => {

@@ -298,7 +298,6 @@ const FiscalYearSettings = () => {
             </Modal.Footer>
           </Form>
         </Modal>
-      </Container>
     </>
   );
 };

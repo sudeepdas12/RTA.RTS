@@ -1,0 +1,4 @@
+client_code,boid,full_name,holder_type,pan_or_citizenship,bank_name,bank_account_no,company
+CL001,BOID-CL001,Ram Kumar Shrestha,Public,12345678,NIC Asia Bank,1234567890123,
+CL002,BOID-CL002,ABC Investment Pvt. Ltd,Institution,987654321,Standard Chartered,9876543210987,
+CL003,BOID-CL003,Saraswati Shrestha,Promoter,209988776,Nepal Bank Limited,01001000055667,

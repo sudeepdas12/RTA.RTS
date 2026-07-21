@@ -23,7 +23,7 @@ const DividendClientWise = () => {
       const aggregated = aggregateBy(
         items,
         (item) => item.client_name,
-        (item) => item.net_amount
+        (item) => item.net_payable
       );
       setData(aggregated);
     } catch (err) {

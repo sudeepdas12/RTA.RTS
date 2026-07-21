@@ -33,7 +33,7 @@ class User(models.Model):
     email = models.EmailField(max_length=100, null=True, blank=True)
     password_hash = models.TextField()
     role = models.ForeignKey(Role, on_delete=models.SET_NULL, null=True, related_name='users')
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Active')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Active', db_index=True)
     last_login = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

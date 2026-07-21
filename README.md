@@ -45,7 +45,7 @@ RTA.RTS/
 │   │   └── App.js
 │   └── package.json
 └── database/
-    └── schema.sql           # PostgreSQL schema
+    └── README.md            # PostgreSQL setup notes
 ```
 
 ## 🚀 Installation & Setup
@@ -69,9 +69,9 @@ CREATE USER rta_user WITH PASSWORD 'your_password';
 GRANT ALL PRIVILEGES ON DATABASE rta_rts_db TO rta_user;
 \q
 
-# Execute schema
-cd database
-psql -U postgres -d rta_rts_db -f schema.sql
+# Run Django migrations
+cd backend
+python manage.py migrate --noinput
 ```
 
 ### 2. Backend Setup

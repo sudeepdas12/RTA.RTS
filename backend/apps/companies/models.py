@@ -23,11 +23,11 @@ class Company(models.Model):
     company_code = models.CharField(max_length=20, unique=True)
     company_name = models.CharField(max_length=200)
     sector_type = models.CharField(max_length=50, choices=SECTOR_CHOICES, null=True, blank=True)
-    interest_tax_status = models.CharField(max_length=50, choices=TAX_STATUS_CHOICES, null=True, blank=True)
+    interest_tax_status = models.CharField(max_length=50, choices=TAX_STATUS_CHOICES, null=True, blank=True, db_index=True)
     pan_no = models.CharField(max_length=50, null=True, blank=True)
     bank_account_no = models.CharField(max_length=50, null=True, blank=True)
     bank_name = models.CharField(max_length=100, null=True, blank=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Active')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Active', db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

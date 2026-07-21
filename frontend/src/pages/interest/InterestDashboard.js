@@ -1,30 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Container, Row, Col, Card, Alert, Table } from 'react-bootstrap';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import { Pie } from 'react-chartjs-2';
-import { FaMoneyBillWave, FaFileInvoice, FaCheckCircle, FaClock, FaChartBar } from 'react-icons/fa';
+import React, { useState, useEffect } from 'react';
+import { Container, Row, Col, Card, Spinner, Alert, Table } from 'react-bootstrap';
 import NavigationBar from '../../components/NavigationBar';
 import DateRangeFilter from '../../components/DateRangeFilter';
 import { interestService, companyService, clientService } from '../../services/api';
 import { buildDateParams, formatCurrency, normalizeList } from '../../utils/reportUtils';
-import '../../styles/dashboard.css';
-
-ChartJS.register(ArcElement, Tooltip, Legend);
 
 const InterestDashboard = () => {
-  const toNumber = (value) => {
-    const num = typeof value === 'number' ? value : Number(value);
-    return Number.isFinite(num) ? num : 0;
-  };
-
   const [range, setRange] = useState({ fromDate: '', toDate: '' });
   const [metrics, setMetrics] = useState({ total: 0, count: 0, paid: 0, pending: 0 });
   const [summaryRows, setSummaryRows] = useState([]);
-  const [allCompanies, setAllCompanies] = useState([]);
+  const [companyBreakdown, setCompanyBreakdown] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchData = useCallback(async (dateRange) => {
+  const fetchData = async (dateRange) => {
     setLoading(true);
     setError(null);
     try {
@@ -37,11 +26,11 @@ const InterestDashboard = () => {
         clientService.getAll({ holder_type: 'Institution', page_size: 1000 }),
       ]);
       const items = normalizeList(interestResponse.data);
-      const total = items.reduce((sum, item) => sum + toNumber(item.net_payable), 0);
+      const total = items.reduce((sum, item) => sum + (item.net_payable || 0), 0);
       const paid = items.filter(item => item.payment_status === 'Paid')
-        .reduce((sum, item) => sum + toNumber(item.net_payable), 0);
+        .reduce((sum, item) => sum + (item.net_payable || 0), 0);
       const pending = items.filter(item => item.payment_status === 'Pending')
-        .reduce((sum, item) => sum + toNumber(item.net_payable), 0);
+        .reduce((sum, item) => sum + (item.net_payable || 0), 0);
       setMetrics({
         total,
         count: items.length,
@@ -55,9 +44,9 @@ const InterestDashboard = () => {
 
       const summarize = (filteredItems) => ({
         count: filteredItems.length,
-        gross: filteredItems.reduce((sum, item) => sum + toNumber(item.gross_interest), 0),
-        tax: filteredItems.reduce((sum, item) => sum + toNumber(item.tax_amount), 0),
-        net: filteredItems.reduce((sum, item) => sum + toNumber(item.net_payable), 0),
+        gross: filteredItems.reduce((sum, item) => sum + (item.gross_interest || 0), 0),
+        tax: filteredItems.reduce((sum, item) => sum + (item.tax_amount || 0), 0),
+        net: filteredItems.reduce((sum, item) => sum + (item.net_payable || 0), 0),
       });
 
       const publicSummary = summarize(items.filter(item => publicCompanyIds.has(item.company)));
@@ -72,105 +61,34 @@ const InterestDashboard = () => {
         { type: 'Total', ...totalSummary, isTotal: true },
       ]);
 
-      // Company breakdown with payment status
       const companySummary = {};
       items.forEach(item => {
         const company = item.company_name || 'Unknown';
         if (!companySummary[company]) {
-          companySummary[company] = { count: 0, gross: 0, tax: 0, net: 0, paid: 0, pending: 0 };
+          companySummary[company] = { count: 0, gross: 0, tax: 0, net: 0 };
         }
         companySummary[company].count++;
-        const grossInterest = toNumber(item.gross_interest);
-        const taxAmount = toNumber(item.tax_amount);
-        const netPayable = toNumber(item.net_payable);
-        companySummary[company].gross += grossInterest;
-        companySummary[company].tax += taxAmount;
-        companySummary[company].net += netPayable;
-        if (item.payment_status === 'Paid') {
-          companySummary[company].paid += netPayable;
-        } else if (item.payment_status === 'Pending') {
-          companySummary[company].pending += netPayable;
-        }
+        companySummary[company].gross += item.gross_interest || 0;
+        companySummary[company].tax += item.tax_amount || 0;
+        companySummary[company].net += item.net_payable || 0;
       });
       const companyRows = Object.entries(companySummary)
         .map(([name, data]) => ({ company: name, ...data }))
         .sort((a, b) => b.net - a.net);
-      setAllCompanies(companyRows);
-      console.log('Interest data loaded - items count:', items.length);
-      console.log('Company summary:', companyRows.length, 'companies');
-      console.log('Top 10 companies:', companyRows.slice(0, 10));
-      console.log('Top 10 net values:', companyRows.slice(0, 10).map(r => ({ company: r.company, net: r.net })));
+      setCompanyBreakdown(companyRows);
     } catch (err) {
-      console.error('Error fetching interest data:', err);
       setError(err.response?.data?.detail || 'Failed to fetch data');
       setMetrics({ total: 0, count: 0, paid: 0, pending: 0 });
       setSummaryRows([]);
-      setAllCompanies([]);
+      setCompanyBreakdown([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  };
 
   useEffect(() => {
     fetchData(range);
-  }, [range, fetchData]);
-
-  // Prepare pie chart data (top 10 companies)
-  const topCompanies = allCompanies.slice(0, 10);
-  const topNetValues = topCompanies.map(row => toNumber(row.net));
-  const hasTopNetValues = topNetValues.some(v => v > 0);
-
-  console.log('Pie chart - topCompanies count:', topCompanies.length);
-  console.log('Pie chart - topNetValues:', topNetValues);
-  console.log('Pie chart - hasTopNetValues:', hasTopNetValues);
-  console.log('Pie chart - allCompanies total:', allCompanies.length);
-
-  const pieChartData = {
-    labels: topCompanies.map(row => row.company),
-    datasets: [
-      {
-        label: 'Net Payable',
-        data: topNetValues,
-        backgroundColor: [
-          '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-          '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
-        ],
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  const pieChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: {
-          position: 'bottom',
-        labels: {
-            padding: 15,
-            font: {
-              size: 12
-            }
-        }
-      },
-      tooltip: {
-          backgroundColor: 'rgba(30, 41, 59, 0.95)',
-          padding: 12,
-          titleColor: '#f1f5f9',
-          bodyColor: '#f1f5f9',
-          borderColor: 'rgba(148, 163, 184, 0.2)',
-          borderWidth: 1,
-        callbacks: {
-          label: function(context) {
-            const value = toNumber(context.parsed);
-            const total = context.dataset.data.reduce((a, b) => a + toNumber(b), 0);
-            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-            return `${context.label}: ${formatCurrency(value)} (${percentage}%)`;
-          }
-        }
-      }
-    }
-  };
+  }, [range]);
 
   const rangeText = range.fromDate && range.toDate
     ? `From ${range.fromDate} to ${range.toDate}`
@@ -179,162 +97,119 @@ const InterestDashboard = () => {
   return (
     <>
       <NavigationBar />
-      <div className="dashboard-container">
-        <Container fluid>
-          <h2 className="dashboard-header">💼 Debenture Interest Payable - Dashboard</h2>
-          <DateRangeFilter onApply={setRange} />
-          {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
-          {loading ? (
-            <div className="loading-container-modern">
-              <div className="text-center">
-                <div className="loading-spinner-modern mx-auto mb-3"></div>
-                <p className="fs-5 text-muted">Loading interest data...</p>
-              </div>
-            </div>
-          ) : allCompanies.length === 0 && error ? (
-            <Alert variant="warning" className="mt-3">
-              {error} - Please ensure you are logged in.
-            </Alert>
-          ) : (
-            <>
-              <p className="text-muted mt-3 mb-4">{rangeText}</p>
-              <Row className="mb-4">
-                <Col lg={3} md={6} className="mb-3">
-                  <Card className="modern-stat-card card-warning">
-                    <Card.Body>
-                      <div className="stat-icon-modern">
-                        <FaMoneyBillWave />
-                      </div>
-                      <div className="stat-value-modern stat-value-large">{formatCurrency(metrics.total)}</div>
-                      <div className="stat-label-modern">Total Amount</div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-                <Col lg={3} md={6} className="mb-3">
-                  <Card className="modern-stat-card card-primary">
-                    <Card.Body>
-                      <div className="stat-icon-modern">
-                        <FaFileInvoice />
-                      </div>
-                      <div className="stat-value-modern">{metrics.count}</div>
-                      <div className="stat-label-modern">Records Count</div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-                <Col lg={3} md={6} className="mb-3">
-                  <Card className="modern-stat-card card-success">
-                    <Card.Body>
-                      <div className="stat-icon-modern">
-                        <FaCheckCircle />
-                      </div>
-                      <div className="stat-value-modern stat-value-large">{formatCurrency(metrics.paid)}</div>
-                      <div className="stat-label-modern">Paid Amount</div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-                <Col lg={3} md={6} className="mb-3">
-                  <Card className="modern-stat-card card-danger">
-                    <Card.Body>
-                      <div className="stat-icon-modern">
-                        <FaClock />
-                      </div>
-                      <div className="stat-value-modern stat-value-large">{formatCurrency(metrics.pending)}</div>
-                      <div className="stat-label-modern">Pending Amount</div>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              </Row>
-
-              <Row className="mb-4">
-                <Col lg={7} className="mb-3">
-                  <Card className="chart-card-modern">
-                    <Card.Header><FaMoneyBillWave style={{ marginRight: '0.5rem' }} /> Interest Distribution - Top 10 Companies</Card.Header>
-                    <Card.Body className="chart-body-modern chart-body-large">
-                      {console.log('Rendering pie - topCompanies:', topCompanies.length, 'hasValues:', hasTopNetValues)}
-                      {topCompanies.length > 0 && hasTopNetValues ? (
-                        <Pie data={pieChartData} options={pieChartOptions} />
-                      ) : (
-                        <p className="text-muted text-center">
-                          {topCompanies.length === 0 ? 'No companies data' : 'No payable values to chart'}
-                        </p>
-                      )}
-                    </Card.Body>
-                  </Card>
-                </Col>
-
-                <Col lg={5}>
-                  <Card className="chart-card-modern">
-                    <Card.Header><FaChartBar style={{ marginRight: '0.5rem' }} /> Interest Summary by Type</Card.Header>
-                    <Card.Body>
-                      <p className="text-muted small mb-3">Breakdown by holder category</p>
-                      <Table className="table-modern mb-0">
-                        <thead>
-                          <tr>
-                            <th>Type</th>
-                            <th className="text-end">Records</th>
-                            <th className="text-end">Net Interest</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {summaryRows.map((row, idx) => (
-                            <tr key={idx} className={row.isTotal ? 'fw-bold' : ''}>
-                              <td>{row.type}</td>
-                              <td className="text-end">{row.count}</td>
-                              <td className="text-end">{formatCurrency(row.net)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </Table>
+      <Container fluid className="mt-4">
+        <h2 className="mb-3">Debenture Interest Payable - Dashboard</h2>
+        <DateRangeFilter onApply={setRange} />
+        {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
+        {loading ? (
+          <div className="text-center mt-4">
+            <Spinner animation="border" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </Spinner>
+          </div>
+        ) : (
+          <>
+            <p className="text-muted mt-3">{rangeText}</p>
+            <Row className="g-3 mt-1">
+              <Col md={6} lg={3}>
+                <Card className="shadow-sm h-100">
+                  <Card.Body>
+                    <Card.Title className="text-muted small">Total Amount</Card.Title>
+                    <h4 className="text-primary">{formatCurrency(metrics.total)}</h4>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={6} lg={3}>
+                <Card className="shadow-sm h-100">
+                  <Card.Body>
+                    <Card.Title className="text-muted small">Records Count</Card.Title>
+                    <h4 className="text-info">{metrics.count}</h4>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={6} lg={3}>
+                <Card className="shadow-sm h-100">
+                  <Card.Body>
+                    <Card.Title className="text-muted small">Paid Amount</Card.Title>
+                    <h4 className="text-success">{formatCurrency(metrics.paid)}</h4>
+                  </Card.Body>
+                </Card>
+              </Col>
+              <Col md={6} lg={3}>
+                <Card className="shadow-sm h-100">
+                  <Card.Body>
+                    <Card.Title className="text-muted small">Pending Amount</Card.Title>
+                    <h4 className="text-warning">{formatCurrency(metrics.pending)}</h4>
                   </Card.Body>
                 </Card>
               </Col>
             </Row>
-
-            <Card className="chart-card-modern">
-              <Card.Header>
-                <FaChartBar style={{ marginRight: '0.5rem' }} /> Top Companies Overview
-              </Card.Header>
+            <Card className="shadow-sm mt-4">
               <Card.Body>
-                <div className="mb-3">
-                  <p className="text-muted small mb-0">
-                      Quick view of top 10 companies by net payable
-                    </p>
-                </div>
+                <h5 className="mb-3">Interest Summary by Type</h5>
+                <p className="text-muted small mb-3">Breakdown by holder category (Public/Institution/Tax-Exempted)</p>
                 <div className="table-responsive">
-                  <Table className="table-modern mb-0">
-                    <thead>
+                  <Table striped bordered hover className="mb-0">
+                    <thead className="table-light">
                       <tr>
-                        <th>Company Name</th>
-                        <th className="text-end">Records</th>
-                        <th className="text-end">Net Payable</th>
-                        <th className="text-end">Paid</th>
-                        <th className="text-end">Pending</th>
+                        <th>Type</th>
+                        <th className="text-end">Kitta</th>
+                        <th className="text-end">Amount/Interest</th>
+                        <th className="text-end">Tax</th>
+                        <th className="text-end">Net Interest</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {allCompanies.slice(0, 10).map((row, idx) => (
-                        <tr key={idx}>
-                          <td>{row.company}</td>
+                      {summaryRows.map((row, idx) => (
+                        <tr key={idx} className={row.isTotal ? 'table-light fw-bold' : ''}>
+                          <td>{row.type}</td>
                           <td className="text-end">{row.count}</td>
+                          <td className="text-end">{formatCurrency(row.gross)}</td>
+                          <td className="text-end">{formatCurrency(row.tax)}</td>
                           <td className="text-end">{formatCurrency(row.net)}</td>
-                          <td className="text-end text-success">{formatCurrency(row.paid)}</td>
-                          <td className="text-end text-warning">{formatCurrency(row.pending)}</td>
                         </tr>
                       ))}
                     </tbody>
                   </Table>
                 </div>
-                <div className="text-center mt-3">
-                  <p className="text-muted small">
-                    For detailed company breakdown with search and export, visit <a href="/interest/summary-reports">Summary Reports</a>
-                  </p>
+              </Card.Body>
+            </Card>
+
+            <Card className="shadow-sm mt-4">
+              <Card.Body>
+                <h5 className="mb-3">Company-wise Breakdown</h5>
+                <p className="text-muted small mb-3">
+                  Interest payables grouped by company ({companyBreakdown.length} companies)
+                </p>
+                <div className="table-responsive" style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                  <Table striped bordered hover className="mb-0">
+                    <thead className="table-light" style={{ position: 'sticky', top: 0, zIndex: 1, backgroundColor: '#f8f9fa' }}>
+                      <tr>
+                        <th>Company Name</th>
+                        <th className="text-end">Records</th>
+                        <th className="text-end">Gross Interest</th>
+                        <th className="text-end">Tax</th>
+                        <th className="text-end">Net Payable</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {companyBreakdown.map((row, idx) => (
+                        <tr key={idx}>
+                          <td>{row.company}</td>
+                          <td className="text-end">{row.count}</td>
+                          <td className="text-end">{formatCurrency(row.gross)}</td>
+                          <td className="text-end">{formatCurrency(row.tax)}</td>
+                          <td className="text-end">{formatCurrency(row.net)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
                 </div>
               </Card.Body>
             </Card>
           </>
         )}
       </Container>
-        </div>
     </>
   );
 };

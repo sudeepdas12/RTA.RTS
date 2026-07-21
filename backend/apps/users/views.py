@@ -69,7 +69,7 @@ class PendingUserChangeViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user_obj
         # If user can approve users, show all pending requests; otherwise only show own requests
-        if user.has_permission('users', 'approve') or (user.role and user.role.role_name == 'Admin'):
+        if user.has_permission('users', 'approve') or (user.role and user.role.role_name in ('Admin', 'Administrator')):
             return self.queryset
         return self.queryset.filter(requested_by=user)
 
@@ -83,7 +83,7 @@ class PendingUserChangeViewSet(viewsets.ModelViewSet):
         action = serializer.validated_data.get('action')
         user_obj = request.user_obj
         required_action = 'create' if action == 'CREATE' else 'update' if action == 'UPDATE' else 'delete'
-        if not (user_obj.has_permission('users', required_action) or (user_obj.role and user_obj.role.role_name == 'Admin')):
+        if not (user_obj.has_permission('users', required_action) or (user_obj.role and user_obj.role.role_name in ('Admin', 'Administrator'))):
             return Response({'error': 'Insufficient permissions to request this action'}, status=status.HTTP_403_FORBIDDEN)
 
         instance = serializer.save()
@@ -95,7 +95,7 @@ class PendingUserChangeViewSet(viewsets.ModelViewSet):
         user_obj = request.user_obj
 
         # Authorize approver
-        if not (user_obj.has_permission('users', 'approve') or (user_obj.role and user_obj.role.role_name == 'Admin')):
+        if not (user_obj.has_permission('users', 'approve') or (user_obj.role and user_obj.role.role_name in ('Admin', 'Administrator'))):
             return Response({'error': 'Not authorized to approve'}, status=status.HTTP_403_FORBIDDEN)
 
         if pending.status != 'PENDING':
@@ -167,7 +167,7 @@ class PendingUserChangeViewSet(viewsets.ModelViewSet):
         pending = self.get_object()
         user_obj = request.user_obj
 
-        if not (user_obj.has_permission('users', 'approve') or (user_obj.role and user_obj.role.role_name == 'Admin')):
+        if not (user_obj.has_permission('users', 'approve') or (user_obj.role and user_obj.role.role_name in ('Admin', 'Administrator'))):
             return Response({'error': 'Not authorized to reject'}, status=status.HTTP_403_FORBIDDEN)
 
         if pending.status != 'PENDING':
